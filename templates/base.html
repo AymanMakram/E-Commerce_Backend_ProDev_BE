@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Velo Store</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        /* لضمان وضوح الاسم فوق الخلفية الداكنة */
+        .user-name-highlight {
+            color: #00BCD4 !important;
+            font-weight: 700;
+            text-shadow: 0 0 10px rgba(0, 188, 212, 0.2);
+        }
+        .bg-cyan {
+            background-color: #00BCD4 !important;
+        }
+        /* أنيميشن بسيط عند تحديث السلة لإشعار المستخدم */
+        @keyframes pulse-cyan {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+        .badge-update {
+            animation: pulse-cyan 0.4s ease-in-out;
+        }
+    </style>
+    <script>
+        // الإعدادات العامة للسلة متاحة في كل الصفحات
+        window.CART_CONFIG = {
+            apiUrl: '/api/cart/',
+            itemsApiUrl: '/api/cart/cart-items/',
+            csrfToken: '{{ csrf_token }}'
+        };
+
+        /**
+         * دالة تحديث عداد السلة العالمي
+         * تجمع حقول qty لكل عنصر لتعطي إجمالي القطع (مثلاً 7) بدل عدد الأنواع
+         */
+        function updateGlobalCartCount(data) {
+            const cartCountElement = document.getElementById('cart-count');
+            if (cartCountElement && data.items) {
+                // استخدام reduce لجمع الكميات من مصفوفة العناصر لضمان دقة العدد
+                const totalQty = data.items.reduce((sum, item) => {
+                    const q = parseInt(item.qty || item.quantity || 0);
+                    return sum + q;
+                }, 0);
+                
+                cartCountElement.textContent = totalQty;
+                
+                // إضافة تأثير بصري للتأكيد على التحديث
+                cartCountElement.classList.remove('badge-update');
+                void cartCountElement.offsetWidth; // Trigger reflow
+                cartCountElement.classList.add('badge-update');
+            }
+        }
+
+        /**
+         * جلب بيانات السلة لتحديث العداد (تُستدعى عند التحميل وعند الإضافة)
+         */
+        async function refreshCartBadge() {
+            try {
+                // إضافة timestamp لمنع الـ Caching وضمان الحصول على أحدث بيانات
+                const response = await fetch(`${window.CART_CONFIG.apiUrl}?t=${new Date().getTime()}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    updateGlobalCartCount(data);
+                }
+            } catch (error) {
+                console.error("Failed to refresh cart badge:", error);
+            }
+        }
+
+        // جعل الدالة متاحة عالمياً ليتم استدعاؤها من products.js بعد الـ POST مباشرة
+        window.refreshCartBadge = refreshCartBadge;
+    </script>
+    <script src="{% static 'js/auth/auth.js' %}"></script>
+    <script src="{% static 'js/products.js' %}"></script>
+</head>
+<body style="background-color: #f8fafc;">
+    <nav class="navbar navbar-dark" style="background: #0f172a; padding: 15px 0;">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a class="navbar-brand fw-bold" href="/">
+                <span style="background:#00BCD4; padding:2px 8px; border-radius:5px;">V</span> VELO STORE
+            </a>
+            
+            <div class="d-flex align-items-center">
+                <div id="auth-section" class="me-3">
+                    </div>
+
+                <a href="{% url 'cart_detail' %}" class="nav-link text-white d-flex align-items-center">
+                    <i class="fa-solid fa-cart-shopping me-2"></i> 
+                    السلة: <span id="cart-count" class="badge bg-cyan ms-1">0</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    {% block content %}{% endblock %}
+
+    <script src="{% static 'js/auth/auth.js' %}?v={% now 'U' %}"></script>
+    
+    <script>
+        // دالة لتحديث حالة Navbar (مرحباً يا فلان / تسجيل دخول)
+        function updateNavbar() {
+            const username = localStorage.getItem('username');
+            const token = localStorage.getItem('access_token');
+            const authSection = document.getElementById('auth-section');
+
+            if (token && username) {
+                authSection.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <span class="text-white me-3 small">
+                            مرحباً، <strong style="color: #00BCD4;">${username}</strong>
+                        </span>
+                        <button onclick="handleLogout()" class="btn btn-sm btn-outline-danger rounded-pill px-3">خروج</button>
+                    </div>`;
+            } else {
+                authSection.innerHTML = `
+                    <a href="/api/accounts/login-view/" class="btn btn-sm btn-info text-white rounded-pill px-4">تسجيل دخول</a>`;
+            }
+        }
+
+        // تنفيذ التحديثات فور تحميل المستند لضمان استجابة سريعة
+        document.addEventListener('DOMContentLoaded', () => {
+            updateNavbar();
+            refreshCartBadge(); 
+        });
+
+        // تم إلغاء الـ setTimeout القديم لأنه كان يسبب تأخراً (Delay) في ظهور البيانات
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

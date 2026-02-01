@@ -1,0 +1,57 @@
+# --- Sensitive Data & Secrets ---
+.env
+.venv
+env/
+venv/
+ENV/
+secrets.json
+
+# --- Databases ---
+# Prevents leaking local user data or customer information
+*.sqlite3
+
+# --- Media & Static Files ---
+# User-uploaded images and collected assets should not be on GitHub
+media/
+staticfiles/
+static_root/
+
+# --- Python System Files ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- IDE & Text Editor Files ---
+.vscode/
+.idea/
+*.swp
+*.bak
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# --- Logs ---
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
+
+# --- OS generated files ---
+Thumbs.db
+desktop.ini

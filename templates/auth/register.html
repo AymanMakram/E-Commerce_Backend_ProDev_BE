@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velo Store | انضم إلى المستقبل</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% load static %}
+    <style>
+        :root {
+            --brand-navy: #0f172a;
+            --brand-cyan: #00BCD4;
+            --text-muted: #64748b;
+        }
+
+        body { 
+            background: url('{% static "images/Login_Background.png" %}') no-repeat center center fixed; 
+            background-size: cover; 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; padding: 0;
+            color: var(--brand-navy);
+        }
+
+        .register-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+        
+        .auth-card { 
+            background: rgba(255, 255, 255, 0.97); 
+            border-radius: 24px; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4); 
+            width: 100%; max-width: 520px; 
+            overflow: hidden; border: 1px solid rgba(255,255,255,0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .header-dark { background: var(--brand-navy); padding: 35px; text-align: center; }
+        .header-dark h2 { color: white; font-weight: 800; margin: 0; letter-spacing: 1.5px; font-size: 2.2rem; }
+        .text-cyan { color: var(--brand-cyan); }
+
+        .marketing-section { padding: 35px 45px 15px; text-align: center; }
+        .marketing-section h3 { 
+            font-weight: 900; font-size: 1.75rem; color: var(--brand-navy); line-height: 1.4;
+            margin-bottom: 12px;
+            transition: all 0.4s ease-in-out;
+        }
+        .marketing-section p { 
+            font-size: 1rem; color: var(--text-muted); font-weight: 500;
+            transition: all 0.4s ease-in-out;
+        }
+
+        .form-padding { padding: 0 45px 45px; }
+
+        .type-selector {
+            background: #f1f5f9;
+            padding: 6px;
+            border-radius: 14px;
+            margin-bottom: 30px;
+        }
+        .btn-check:checked + .btn-outline-info {
+            background-color: var(--brand-cyan) !important;
+            border-color: var(--brand-cyan) !important;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
+        }
+        .btn-outline-info { 
+            border: none; color: var(--text-muted); font-weight: 700; 
+            border-radius: 10px !important; padding: 12px;
+            transition: 0.3s;
+        }
+
+        .form-label { 
+            font-weight: 800; font-size: 0.95rem; color: var(--brand-navy);
+            margin-bottom: 10px; display: flex; align-items: center; gap: 10px;
+        }
+        .form-label i { color: var(--brand-cyan); font-size: 1.1rem; width: 20px; text-align: center; }
+
+        .form-control { 
+            border-radius: 12px; border: 2px solid #e2e8f0; 
+            padding: 14px 18px; font-weight: 600; font-size: 0.95rem;
+            transition: all 0.3s ease; background: #fcfdfe;
+        }
+        .form-control::placeholder { color: #cbd5e1; font-weight: 400; }
+        .form-control:focus { 
+            border-color: var(--brand-cyan); 
+            box-shadow: 0 0 0 4px rgba(0, 188, 212, 0.1); 
+            background: white; outline: none;
+        }
+
+        .btn-velo { 
+            background: var(--brand-cyan); color: white; border: none; 
+            font-weight: 800; padding: 16px; border-radius: 12px; 
+            font-size: 1.15rem; width: 100%; transition: 0.3s;
+            box-shadow: 0 10px 15px -3px rgba(0, 188, 212, 0.4);
+            margin-top: 15px;
+        }
+        .btn-velo:hover { background: #0097a7; transform: translateY(-2px); box-shadow: 0 15px 25px -5px rgba(0, 188, 212, 0.4); }
+
+        .terms-box { 
+            font-size: 0.85rem; line-height: 1.7; color: var(--text-muted); 
+            margin: 25px 0; text-align: center; border-top: 1px solid #f1f5f9; padding-top: 25px;
+        }
+        .terms-box a { color: var(--brand-cyan); text-decoration: none; font-weight: 700; border-bottom: 1px dashed var(--brand-cyan); }
+
+        .login-footer { text-align: center; font-weight: 700; font-size: 1rem; }
+        .login-footer a { color: var(--brand-cyan); text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+        .login-footer i { transition: 0.3s; }
+        .login-footer a:hover i { transform: translateX(-5px); }
+    </style>
+</head>
+<body>
+
+<div class="register-container">
+    <div class="auth-card">
+        <div class="header-dark">
+            <h2>VELO <span class="text-cyan">STORE</span></h2>
+        </div>
+
+        <div class="marketing-section" id="marketing-content">
+            <h3 id="m-title">تسوّق بذكاء.. عالم من الخيارات <span class="text-cyan">بين يديك</span></h3>
+            <p id="m-desc">اكتشف أفضل المنتجات بأفضل الأسعار في تجربة تسوق استثنائية صُممت لأجلك.</p>
+        </div>
+
+        <div class="form-padding">
+            <form id="register-form">
+                {% csrf_token %}
+                
+                <div class="type-selector d-flex mb-4">
+                    <input type="radio" class="btn-check" name="user_type" id="customer" value="customer" checked>
+                    <label class="btn btn-outline-info w-100" for="customer">🛒 أنا متسوق</label>
+
+                    <input type="radio" class="btn-check" name="user_type" id="seller" value="seller">
+                    <label class="btn btn-outline-info w-100" for="seller">🏪 أنا تاجر</label>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label"><i class="fa-solid fa-circle-user"></i> اسم المستخدم</label>
+                    <input type="text" class="form-control" id="reg-username" 
+                           placeholder="مثال: ahmed_mohamed" required minlength="4" pattern="^[a-zA-Z0-9._]+$">
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label"><i class="fa-solid fa-paper-plane"></i> البريد الإلكتروني</label>
+                    <input type="email" class="form-control" id="reg-email" placeholder="name@domain.com" required>
+                </div>
+
+                <div id="customer-fields">
+                    <div class="mb-4">
+                        <label class="form-label"><i class="fa-solid fa-mobile-retro"></i> رقم الهاتف الجوال</label>
+                        <input type="tel" class="form-control" id="phone_number" 
+                               placeholder="01xxxxxxxxx" maxlength="11" inputmode="numeric" required>
+                    </div>
+                </div>
+
+                <div id="seller-fields" class="d-none">
+                    <div class="mb-4">
+                        <label class="form-label"><i class="fa-solid fa-gem"></i> اسم علامتك التجارية</label>
+                        <input type="text" class="form-control" id="store_name" placeholder="مثال: شركة فيلو للتقنية">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label"><i class="fa-solid fa-headset"></i> خط التواصل التجاري</label>
+                        <input type="tel" class="form-control" id="seller_phone" 
+                               placeholder="رقم الهاتف (01xxxxxxxxx)" maxlength="11" inputmode="numeric">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label"><i class="fa-solid fa-certificate"></i> الرقم الضريبي الرسمي</label>
+                        <input type="text" class="form-control" id="tax_number" 
+                               placeholder="9 أرقام مخصصة لمؤسستك" maxlength="9" inputmode="numeric">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <label class="form-label"><i class="fa-solid fa-vault"></i> كلمة المرور</label>
+                        <input type="password" class="form-control" id="reg-password" placeholder="********" required minlength="8">
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <label class="form-label"><i class="fa-solid fa-circle-check"></i> تأكيدها</label>
+                        <input type="password" class="form-control" id="confirm-password" placeholder="********" required minlength="8">
+                    </div>
+                </div>
+
+                <div id="register-error" class="alert alert-danger d-none py-2 small fw-bold text-center"></div>
+
+                <button type="submit" id="register-btn" class="btn-velo">انطلق الآن في فيلو</button>
+
+                <div class="terms-box">
+                    بالتسجيل في منصتنا، أنت توافق على <a href="#">شروط الاستخدام</a> و <a href="#">إشعار الخصوصية</a>.
+                </div>
+
+                <div class="login-footer">
+                    لديك حساب بالفعل؟ <a href="{% url 'login_html' %}">تسجيل الدخول <i class="fa-solid fa-arrow-left-long ms-1"></i></a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const radios = document.getElementsByName('user_type');
+        const mTitle = document.getElementById('m-title');
+        const mDesc = document.getElementById('m-desc');
+        const customerFields = document.getElementById('customer-fields');
+        const sellerFields = document.getElementById('seller-fields');
+        
+        // جلب المدخلات للتحكم في الـ Required ديناميكياً
+        const phoneInput = document.getElementById('phone_number');
+        const storeInput = document.getElementById('store_name');
+        const sellerPhoneInput = document.getElementById('seller_phone');
+        const taxInput = document.getElementById('tax_number');
+
+        const marketingText = {
+            customer: {
+                title: 'تسوّق بذكاء.. عالم من الخيارات <span class="text-cyan">بين يديك</span>',
+                desc: 'اكتشف أفضل المنتجات بأفضل الأسعار في تجربة تسوق استثنائية صُممت لأجلك.'
+            },
+            seller: {
+                title: 'حوّل شغفك إلى <span class="text-cyan">أرباح</span> لا تتوقف',
+                desc: 'انضم إلى المنصة الأكثر نمواً وابدأ ببيع منتجاتك لآلاف العملاء في دقائق.'
+            }
+        };
+
+        radios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                const type = this.value;
+                
+                mTitle.style.opacity = '0';
+                mDesc.style.opacity = '0';
+                
+                setTimeout(() => {
+                    mTitle.innerHTML = marketingText[type].title;
+                    mDesc.innerText = marketingText[type].desc;
+                    mTitle.style.opacity = '1';
+                    mDesc.style.opacity = '1';
+                }, 200);
+
+                if (type === 'seller') {
+                    sellerFields.classList.remove('d-none');
+                    customerFields.classList.add('d-none');
+                    
+                    // تفعيل إلزامية حقول التاجر وتعطيل العميل
+                    storeInput.required = true;
+                    sellerPhoneInput.required = true;
+                    taxInput.required = true;
+                    phoneInput.required = false;
+                } else {
+                    customerFields.classList.remove('d-none');
+                    sellerFields.classList.add('d-none');
+                    
+                    // تفعيل إلزامية العميل وتعطيل التاجر
+                    phoneInput.required = true;
+                    storeInput.required = false;
+                    sellerPhoneInput.required = false;
+                    taxInput.required = false;
+                }
+            });
+        });
+    });
+</script>
+<script src="{% static 'js/auth/register.js' %}"></script>
+</body>
+</html>

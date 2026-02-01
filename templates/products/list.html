@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="container text-center py-5">
+        <h1 class="fw-bold mb-3" style="color: #00BCD4; letter-spacing: 1px;">
+            اكتشف عالم Velo المميز
+        </h1>
+        <p class="text-muted fs-5 mx-auto" style="max-width: 600px;">
+            تسوق أفضل المنتجات المختارة بعناية لتناسب ذوقك الرفيع.. 
+            <span class="d-block mt-2 fw-semibold" style="color: #333;">
+                اختر فئتك المفضلة وابدأ رحلة التسوق الآن!
+            </span>
+        </p>
+    </div>
+
+    <div class="container mb-5">
+        <div class="row justify-content-center">
+            <div class="col-md-7 col-lg-6">
+                <div class="input-group shadow-sm" style="border-radius: 50px; overflow: hidden; border: 2px solid #00BCD4; background: white;">
+                    <span class="input-group-text border-0 bg-white ps-4">
+                        <i class="fa-solid fa-magnifying-glass" style="color: #00BCD4;"></i>
+                    </span>
+                    <input type="text" id="product-search" class="form-control border-0 py-3" placeholder="بتدور على إيه النهاردة؟" style="box-shadow: none;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="category-bar" class="container text-center mb-4">
+        <button id="btn-all" class="btn rounded-pill px-4 m-1 fw-bold" style="background-color: #00BCD4; color: #fff; border: 2px solid #00BCD4;">الكل</button>
+    </div>
+
+    <div id="products-grid" class="row g-4">
+        <div class="col-12 text-center py-5" id="main-loader">
+            <div class="spinner-border text-info" style="width: 3rem; height: 3rem;"></div>
+        </div>
+    </div>
+
+    <nav aria-label="Page navigation" class="mt-5">
+        <ul id="pagination-controls" class="pagination justify-content-center"></ul>
+    </nav>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/products.js' %}?v={% now 'U' %}"></script>
+<script>
+    // حماية الصفحة: لو مفيش توكن، رجعه فوراً للـ Login
+    if (!localStorage.getItem('access_token')) {
+        window.location.replace('/api/accounts/login-view/');
+    }
+</script>
+{% endblock %}

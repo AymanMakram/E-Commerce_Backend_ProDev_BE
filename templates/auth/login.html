@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velo Store - تسجيل الدخول</title>
+    
+    {% load static %}
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    <style>
+        .auth-wrapper {
+            background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), 
+                        url("{% static 'images/Login_Background.png' %}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .login-card-modern {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-info {
+            background-color: #00BCD4 !important;
+            border: none;
+        }
+
+        .btn-info:hover {
+            background-color: #008ba3 !important;
+        }
+    </style>
+</head>
+<body>
+
+<div class="auth-wrapper">
+    <div class="login-card-modern">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold text-info mb-1">Velo Store</h2>
+            <p class="text-muted">مرحباً بك! سجل دخولك للمتابعة</p>
+        </div>
+
+        <form id="login-form">
+            {% csrf_token %} 
+            
+            <div class="mb-3">
+                <label class="form-label fw-semibold">اسم المستخدم</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-0"><i class="fa-solid fa-user text-info"></i></span>
+                    <input type="text" id="username" class="form-control bg-light border-0 py-2" placeholder="أدخل اسم المستخدم" required>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="d-flex justify-content-between">
+                    <label class="form-label fw-semibold">كلمة المرور</label>
+                    <a href="#" class="text-info small text-decoration-none">نسيت كلمة المرور؟</a>
+                </div>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-0"><i class="fa-solid fa-lock text-info"></i></span>
+                    <input type="password" id="password" class="form-control bg-light border-0 py-2" placeholder="********" required>
+                </div>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="remember">
+                <label class="form-check-label small" for="remember">تذكرني</label>
+            </div>
+
+            <button type="submit" 
+                    id="login-btn" 
+                    class="btn btn-info w-100 text-white fw-bold py-2 rounded-3">
+                <span class="spinner-border spinner-border-sm d-none me-2" id="login-spinner"></span>
+                دخول
+            </button>
+        </form>
+
+        <div id="login-error" class="alert alert-danger mt-3 d-none"></div>
+
+        <div class="text-center mt-4 border-top pt-3">
+            <p class="small text-muted">ليس لديك حساب؟ 
+                <a href="{% url 'register_html' %}" class="text-info fw-bold text-decoration-none">إنشاء حساب جديد</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'js/auth/auth.js' %}?v={% now 'U' %}"></script>
+
+</body>
+</html>
