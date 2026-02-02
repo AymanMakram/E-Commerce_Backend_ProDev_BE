@@ -173,7 +173,10 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function updateCartBadge() {
         fetch('/api/cart/?t=' + new Date().getTime(), { credentials: 'include' })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error('API Error');
+                return res.json();
+            })
             .then(data => {
                 const badge = document.getElementById('cart-count');
                 if (badge && data.items) {
@@ -184,7 +187,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     badge.style.transform = 'scale(1.3)';
                     setTimeout(() => badge.style.transform = 'scale(1)', 200);
                 }
-            }).catch(e => console.error("Badge update failed", e));
+            }).catch(e => {
+                console.error("Badge update failed", e);
+                // Fallback: set badge to 0 if API fails
+                const badge = document.getElementById('cart-count');
+                if (badge) badge.textContent = '0';
+            });
     }
 
     /**

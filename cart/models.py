@@ -3,11 +3,14 @@ from django.conf import settings
 from products.models import ProductItem  # استيراد القطعة من تطبيق المنتجات
 
 class ShoppingCart(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='cart')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='carts', null=True, blank=True)
+    session_id = models.CharField(max_length=40, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Cart of {self.user.username}"
+        if self.user:
+            return f"Cart of {self.user.username}"
+        return f"Anonymous Cart ({self.session_id})"
 
     @property
     def total_price(self):

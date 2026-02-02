@@ -3,10 +3,10 @@ from .models import ShoppingCart, ShoppingCartItem
 
 class ShoppingCartItemSerializer(serializers.ModelSerializer):
     # 1. الأسماء: ربط مباشر لضمان ظهور اسم المنتج من خلال موديل المنتج الأساسي
-    product_name = serializers.ReadOnlyField(source='product_item.product.name')
+    product_name = serializers.SerializerMethodField()
     
     # 2. الأسعار: سحب السعر من قطعة المنتج (ProductItem) ليتوافق مع الواجهة الأمامية
-    price = serializers.ReadOnlyField(source='product_item.price')
+    price = serializers.SerializerMethodField()
     
     # 3. الصور: استخدام SerializerMethodField لمعالجة مسارات الصور المعقدة
     image = serializers.SerializerMethodField()
@@ -14,7 +14,7 @@ class ShoppingCartItemSerializer(serializers.ModelSerializer):
     # 4. الكمية: التحويل من 'qty' في الموديل إلى 'quantity' لطلب الـ Frontend
     quantity = serializers.IntegerField(source='qty', min_value=1)
     
-    subtotal = serializers.ReadOnlyField()
+    subtotal = serializers.SerializerMethodField()
 
     class Meta:
         model = ShoppingCartItem
@@ -28,6 +28,18 @@ class ShoppingCartItemSerializer(serializers.ModelSerializer):
             'qty',      # المسمى الأصلي في قاعدة البيانات
             'subtotal'
         ]
+
+    def get_product_name(self, obj):
+        try:
+            return obj.product_item.product.name
+        except Exception:
+            return "Unknown Product"
+
+    def get_price(self, obj):
+        try:
+            return obj.product_item.price
+        except Exception:
+            return 0
 
     def get_image(self, obj):
         """
@@ -53,13 +65,24 @@ class ShoppingCartItemSerializer(serializers.ModelSerializer):
                 return image_field.url
         except Exception:
             return None
-        return None
+
+    def get_subtotal(self, obj):
+        try:
+            return obj.product_item.price * obj.qty
+        except Exception:
+            return 0
 
 class ShoppingCartSerializer(serializers.ModelSerializer):
     # ربط عناصر السلة باستخدام السيرياليزر المعدل أعلاه
     items = ShoppingCartItemSerializer(many=True, read_only=True)
-    total_price = serializers.ReadOnlyField()
+    total_price = serializers.SerializerMethodField()
 
     class Meta:
         model = ShoppingCart
         fields = ['id', 'user', 'items', 'total_price']
+
+    def get_total_price(self, obj):
+        try:
+            return sum(item.subtotal for item in obj.items.all())
+        except Exception:
+            return 0

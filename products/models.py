@@ -29,7 +29,7 @@ class Product(models.Model):
         return f"{self.name} (Seller: {self.seller.username})"
     
     class Meta:
-        ordering = ['-id']
+        ordering = ['id']
 
 # 3. جداول الاختلافات (Variations)
 class Variation(models.Model):

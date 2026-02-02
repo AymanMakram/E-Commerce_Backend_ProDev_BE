@@ -55,5 +55,5 @@ class ProductViewSet(viewsets.ModelViewSet): # تم تغييرها من ReadOnly
 
 # 4. محول التصنيفات (كما هو)
 class ProductCategoryViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = ProductCategory.objects.all()
+    queryset = ProductCategory.objects.order_by('category_name')
     serializer_class = ProductCategorySerializer
