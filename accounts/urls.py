@@ -4,7 +4,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-from .views import RegisterView, UserProfileViewSet, login_page, register_page
+from .views import RegisterView, UserProfileViewSet, login_page, register_page, country_list, payment_type_list
 
 router = DefaultRouter()
 router.register(r'profile', UserProfileViewSet, basename='user-profile')
@@ -15,6 +15,11 @@ urlpatterns = [
     path('register-view/', register_page, name='register_html'),
     # 1. نظام التسجيل
     path('register/', RegisterView.as_view(), name='auth_register'),
+    # Endpoint for payment types
+    path('payment-types/', payment_type_list, name='payment_type_list'),
+
+    # Endpoint for countries
+    path('countries/', country_list, name='country_list'),
 
     # 2. نظام الدخول - هذا هو المسار الذي يجب أن ينادي عليه الـ JS
     # إذا كان هذا الملف مستدعى في الرئيسي تحت 'api/accounts/'

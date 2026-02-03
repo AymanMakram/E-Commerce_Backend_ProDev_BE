@@ -4,6 +4,11 @@ from .models import (
     User, Address, UserAddress, Country, 
     UserPaymentMethod, PaymentType, SellerProfile, CustomerProfile
 )
+# 6. محول أنواع الدفع (PaymentType)
+class PaymentTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentType
+        fields = ['id', 'value']
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -128,13 +133,45 @@ class RegisterSerializer(serializers.ModelSerializer):
 # 4. محول طرق الدفع (User Payment Method)
 class UserPaymentMethodSerializer(serializers.ModelSerializer):
     payment_type_name = serializers.ReadOnlyField(source='payment_type.value')
+    payment_status = serializers.SerializerMethodField()
 
     class Meta:
         model = UserPaymentMethod
         fields = [
             'id', 'payment_type', 'payment_type_name', 'provider', 
-            'account_number', 'expiry_date', 'is_default'
+            'account_number', 'expiry_date', 'is_default', 'payment_status'
         ]
+
+    def get_payment_status(self, obj):
+        # For demo, infer status from payment type
+        if hasattr(obj, 'payment_type') and obj.payment_type.value == 'Cash on Delivery':
+            return 'Pending'
+        return 'Success'
+
+    def create(self, validated_data):
+        payment_type = validated_data.get('payment_type')
+        provider = validated_data.get('provider')
+        account_number = validated_data.get('account_number')
+        expiry_date = validated_data.get('expiry_date')
+        is_default = validated_data.get('is_default', False)
+        user = self.context.get('user') or validated_data.get('user')
+        # Set payment status logic
+        from finance.models import PaymentStatus
+        status_name = 'Success'
+        if payment_type.value == 'Cash on Delivery':
+            status_name = 'Pending'
+        status_obj, _ = PaymentStatus.objects.get_or_create(status=status_name)
+        # Create payment method
+        payment_method = UserPaymentMethod.objects.create(
+            user=user,
+            payment_type=payment_type,
+            provider=provider,
+            account_number=account_number,
+            expiry_date=expiry_date,
+            is_default=is_default
+        )
+        # Optionally, you can link status to a transaction if needed
+        return payment_method
 
 # 5. محول الملف الشخصي الكامل (User Profile)
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -147,5 +184,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ('username', 'user_type')
 
     def get_addresses(self, obj):
-        user_addresses = UserAddress.objects.filter(user=obj)
-        return AddressSerializer([ua.address for ua in user_addresses], many=True).data
+        user_addresses = UserAddress.objects.filter(user=obj).select_related('address')
+        results = []
+        for ua in user_addresses:
+            data = AddressSerializer(ua.address).data
+            data['is_default'] = ua.is_default
+            results.append(data)
+        return results

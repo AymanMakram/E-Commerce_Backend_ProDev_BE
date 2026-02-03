@@ -18,13 +18,16 @@ class CartViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
-            return ShoppingCart.objects.filter(user=self.request.user, session_id__isnull=True)
+            return ShoppingCart.objects.filter(user=self.request.user)
         else:
             return ShoppingCart.objects.filter(user__isnull=True, session_id=self.request.session.session_key)
 
     def list(self, request, *args, **kwargs):
         if request.user.is_authenticated:
-            cart, _ = ShoppingCart.objects.get_or_create(user=request.user, session_id=None)
+            cart, _ = ShoppingCart.objects.get_or_create(user=request.user, defaults={'session_id': None})
+            if cart.session_id:
+                cart.session_id = None
+                cart.save(update_fields=['session_id'])
         else:
             session_key = request.session.session_key
             if not session_key:
@@ -44,7 +47,7 @@ class CartItemViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
-            return ShoppingCartItem.objects.filter(cart__user=self.request.user, cart__session_id__isnull=True)
+            return ShoppingCartItem.objects.filter(cart__user=self.request.user)
         else:
             return ShoppingCartItem.objects.filter(cart__user__isnull=True, cart__session_id=self.request.session.session_key)
 
@@ -54,7 +57,10 @@ class CartItemViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             
             if request.user.is_authenticated:
-                cart, _ = ShoppingCart.objects.get_or_create(user=request.user, session_id=None)
+                cart, _ = ShoppingCart.objects.get_or_create(user=request.user, defaults={'session_id': None})
+                if cart.session_id:
+                    cart.session_id = None
+                    cart.save(update_fields=['session_id'])
             else:
                 session_key = request.session.session_key
                 if not session_key:

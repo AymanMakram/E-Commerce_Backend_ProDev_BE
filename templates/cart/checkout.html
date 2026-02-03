@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5" style="direction: rtl;">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm p-4" style="border-radius: 20px; background-color: #f8f9fa;">
+                <h3 class="fw-bold mb-4 text-center"><i class="fa-solid fa-credit-card me-2 text-info"></i> إتمام الشراء والدفع</h3>
+                <div id="checkout-loader" class="text-center py-3">
+                    <div class="spinner-border text-info" role="status"></div>
+                    <p class="mt-2 text-muted">جاري تحميل بيانات الشراء...</p>
+                </div>
+                <form id="checkout-form" style="display:none;">
+                    <div id="address-section"></div>
+                    <div id="payment-section" class="mt-4"></div>
+                    <div id="payment-form-section" style="display:none;"></div>
+                    <div class="mt-4 text-center">
+                        <button type="submit" class="btn btn-info w-50 fw-bold py-3 rounded-pill">تأكيد الطلب والدفع</button>
+                        <a href="/cart/" class="btn btn-light w-25 fw-bold py-3 rounded-pill ms-2">عودة للسلة</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="{% static 'js/cart/checkout.modern.js' %}"></script>
+<script src="{% static 'js/cart/checkout.back.js' %}"></script>
+{% endblock %}

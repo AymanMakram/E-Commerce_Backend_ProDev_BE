@@ -1,5 +1,32 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // --- الجزء 1: تعريف العناصر ---
+    // Check authentication
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        window.location.replace('/api/accounts/login-view/');
+        return;
+    }
+
+    // Check user type - redirect sellers to their dashboard
+    fetch('/api/accounts/profile/me/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => response.json())
+    .then(userData => {
+        window.userType = userData.user_type;
+        if (userData.user_type === 'seller') {
+            window.location.replace('/seller/');
+            return;
+        }
+        // Proceed with products page initialization
+        initializeProductsPage();
+    })
+    .catch(error => {
+        console.error('Error fetching user profile:', error);
+        window.location.replace('/api/accounts/login-view/');
+    });
+
+    function initializeProductsPage() {
+        // --- الجزء 1: تعريف العناصر ---
     const grid = document.getElementById('products-grid');
     const categoryBar = document.getElementById('category-bar');
     const searchInput = document.getElementById('product-search'); 
@@ -12,11 +39,33 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- الجزء 2: الوظائف ---
 
     // 1. وظيفة جلب المنتجات
+    function renderSkeletons(count = 8) {
+        if (!grid) return;
+        grid.innerHTML = '';
+        for (let i = 0; i < count; i++) {
+            grid.innerHTML += `
+                <div class="col-md-4 col-lg-3 mb-4">
+                    <div class="card p-3 h-100 shadow-sm border-0" style="border-radius: 20px;">
+                        <div class="img-wrapper skeleton" style="border-radius: 15px; height: 180px;"></div>
+                        <div class="mt-3">
+                            <div class="skeleton-text mb-2" style="height: 14px; width: 40%;"></div>
+                            <div class="skeleton-text mb-3" style="height: 18px; width: 80%;"></div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="skeleton-text" style="height: 16px; width: 35%;"></div>
+                                <div class="skeleton-text" style="height: 36px; width: 36px; border-radius: 50%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+    }
+
     async function loadProducts(url = '/api/products/') {
         if (!grid) return;
-        grid.style.opacity = "0.5"; 
+        renderSkeletons();
         try {
-            const res = await fetch(url);
+            const res = await window.apiFetch ? window.apiFetch(url) : fetch(url);
+            if (!res) return;
             const data = await res.json();
             
             renderProducts(data.results || []);
@@ -26,10 +75,6 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) {
             console.error("Error loading products:", e);
             grid.innerHTML = '<div class="text-center w-100 py-5 text-danger">عطل في سحب المنتجات</div>';
-        } finally {
-            grid.style.opacity = "1";
-            const loader = document.getElementById('main-loader');
-            if (loader) loader.remove();
         }
     }
 
@@ -37,7 +82,8 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadCategories() {
         if (!categoryBar) return;
         try {
-            const res = await fetch('/api/categories/');
+            const res = await (window.apiFetch ? window.apiFetch('/api/categories/') : fetch('/api/categories/'));
+            if (!res) return;
             const data = await res.json();
             const categories = data.results || data;
 
@@ -121,6 +167,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         onerror="this.onerror=null;this.src='${fallbackImg}';">`
                 : `<div style="width: 100%; height: 100%; background: linear-gradient(135deg, #00BCD4 0%, #00acc1 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">Product</div>`;
 
+            let cartBtn = '';
+            if (window.userType === 'customer') {
+                cartBtn = `<button class="btn btn-outline-info btn-sm rounded-circle ms-2" title="أضف للسلة" style="width:38px;height:38px;display:flex;align-items:center;justify-content:center;" onclick="addToCart('${productItemId}', '${p.name.replace(/'/g, "\\'")}', '${price}', '${imgSource}')">
+                    <i class='fa fa-plus'></i>
+                </button>`;
+            }
             return `
                 <div class="col-md-4 col-lg-3 mb-4">
                     <div class="card product-card p-3 h-100 shadow-sm border-0" style="border-radius: 20px;">
@@ -132,9 +184,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <h6 class="fw-bold mb-3 text-truncate" title="${p.name}">${p.name}</h6>
                             <div class="d-flex justify-content-between align-items-center">
                                 <span style="color: #00BCD4; font-weight: 800;">${price} ج.م</span>
-                                <button class="btn btn-sm btn-dark" 
-                                    onclick="addToCart('${productItemId}', '${p.name.replace(/'/g, "\\'")}', '${price}', '${imgSource}')"
-                                    style="border-radius: 10px; width: 35px; height: 35px;">+</button>
+                                ${cartBtn}
                             </div>
                         </div>
                     </div>
@@ -172,8 +222,13 @@ document.addEventListener('DOMContentLoaded', function() {
      * 5. تحديث عداد السلة (تستخدم الـ Reduce لجمع الكميات)
      */
     function updateCartBadge() {
-        fetch('/api/cart/?t=' + new Date().getTime(), { credentials: 'include' })
+        if (window.userType !== 'customer') return;
+        const fetcher = window.apiFetch
+            ? window.apiFetch('/api/cart/?t=' + new Date().getTime())
+            : fetch('/api/cart/?t=' + new Date().getTime(), { credentials: 'include' });
+        Promise.resolve(fetcher)
             .then(res => {
+                if (!res) throw new Error('Auth redirect');
                 if (!res.ok) throw new Error('API Error');
                 return res.json();
             })
@@ -199,33 +254,39 @@ document.addEventListener('DOMContentLoaded', function() {
      * 6. دالة الإضافة للسلة (متاحة عالمياً)
      */
     window.addToCart = async function(productItemId, name, price, image) {
-        const token = window.CART_CONFIG ? window.CART_CONFIG.csrfToken : '';
-
+        if (window.userType !== 'customer') return;
         try {
-            const response = await fetch('/api/cart/cart-items/', {
+            const response = await (window.apiFetch ? window.apiFetch('/api/cart/cart-items/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': token
-                },
                 body: JSON.stringify({ 
                     product_item: productItemId, 
                     quantity: 1 
                 }),
+            }) : fetch('/api/cart/cart-items/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': (window.CART_CONFIG && window.CART_CONFIG.csrfToken) ? window.CART_CONFIG.csrfToken : ''
+                },
+                body: JSON.stringify({ product_item: productItemId, quantity: 1 }),
                 credentials: 'include'
-            });
+            }));
+
+            if (!response) return;
 
             if (response.ok) {
-                updateCartBadge(); 
-                console.log(`تم إضافة ${name} للسلة`);
-                alert(`تم إضافة ${name} للسلة بنجاح`);
+                updateCartBadge();
+                if (typeof showToast === 'function') {
+                    showToast(`تم إضافة ${name} للسلة`, 'success');
+                }
             } else if (response.status === 403) {
-                alert("يرجى تسجيل الدخول أولاً.");
+                if (typeof showToast === 'function') showToast('يرجى تسجيل الدخول أولاً.', 'danger');
             } else {
-                alert("حدث خطأ أثناء الإضافة.");
+                if (typeof showToast === 'function') showToast('حدث خطأ أثناء الإضافة.', 'danger');
             }
         } catch (e) {
             console.error("Network Error:", e);
+            if (typeof showToast === 'function') showToast('تعذر الاتصال بالخادم.', 'danger');
         }
     }
 
@@ -243,5 +304,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     loadCategories();
     loadProducts();
-    updateCartBadge(); 
+    if (window.userType === 'customer') {
+        updateCartBadge();
+    }
+    } // End of initializeProductsPage
 });

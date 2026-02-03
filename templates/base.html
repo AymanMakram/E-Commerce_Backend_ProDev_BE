@@ -26,6 +26,10 @@
         .badge-update {
             animation: pulse-cyan 0.4s ease-in-out;
         }
+
+        /* Skeletons (loading states) */
+        .skeleton { background: #e2e8f0; }
+        .skeleton-text { background: #cbd5e1; border-radius: 6px; }
     </style>
     <script>
         // الإعدادات العامة للسلة متاحة في كل الصفحات
@@ -63,7 +67,11 @@
         async function refreshCartBadge() {
             try {
                 // إضافة timestamp لمنع الـ Caching وضمان الحصول على أحدث بيانات
-                const response = await fetch(`${window.CART_CONFIG.apiUrl}?t=${new Date().getTime()}`);
+                const url = `${window.CART_CONFIG.apiUrl}?t=${new Date().getTime()}`;
+                const response = await (typeof window.request === 'function'
+                    ? window.request(url, { method: 'GET' })
+                    : fetch(url));
+                if (!response) return;
                 if (response.ok) {
                     const data = await response.json();
                     updateGlobalCartCount(data);
@@ -76,17 +84,19 @@
         // جعل الدالة متاحة عالمياً ليتم استدعاؤها من products.js بعد الـ POST مباشرة
         window.refreshCartBadge = refreshCartBadge;
     </script>
-    <script src="{% static 'js/auth/auth.js' %}"></script>
-    <script src="{% static 'js/products.js' %}"></script>
 </head>
 <body style="background-color: #f8fafc;">
     <nav class="navbar navbar-dark" style="background: #0f172a; padding: 15px 0;">
         <div class="container d-flex justify-content-between align-items-center">
-            <a class="navbar-brand fw-bold" href="/">
+            <a class="navbar-brand fw-bold" href="/products/">
                 <span style="background:#00BCD4; padding:2px 8px; border-radius:5px;">V</span> VELO STORE
             </a>
             
             <div class="d-flex align-items-center">
+                <a href="/products/" class="nav-link text-white me-3 d-flex align-items-center">
+                    <i class="fa-solid fa-store me-2"></i>
+                    المنتجات
+                </a>
                 <div id="auth-section" class="me-3">
                     </div>
 
@@ -100,38 +110,43 @@
 
     {% block content %}{% endblock %}
 
-    <script src="{% static 'js/auth/auth.js' %}?v={% now 'U' %}"></script>
+    <!-- Toasts -->
+    <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100;"></div>
+
+    <script src="{% static 'frontend/js/api.js' %}?v={% now 'U' %}"></script>
+    <script src="{% static 'frontend/js/auth.js' %}?v={% now 'U' %}"></script>
     
     <script>
-        // دالة لتحديث حالة Navbar (مرحباً يا فلان / تسجيل دخول)
-        function updateNavbar() {
-            const username = localStorage.getItem('username');
-            const token = localStorage.getItem('access_token');
-            const authSection = document.getElementById('auth-section');
-
-            if (token && username) {
-                authSection.innerHTML = `
-                    <div class="d-flex align-items-center">
-                        <span class="text-white me-3 small">
-                            مرحباً، <strong style="color: #00BCD4;">${username}</strong>
-                        </span>
-                        <button onclick="handleLogout()" class="btn btn-sm btn-outline-danger rounded-pill px-3">خروج</button>
-                    </div>`;
-            } else {
-                authSection.innerHTML = `
-                    <a href="/api/accounts/login-view/" class="btn btn-sm btn-info text-white rounded-pill px-4">تسجيل دخول</a>`;
+        // Toast notification system (used by products/cart)
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) {
+                // Fallback
+                alert(message);
+                return;
             }
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-bg-${type} border-0 show mb-2`;
+            toast.role = 'alert';
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
         }
 
         // تنفيذ التحديثات فور تحميل المستند لضمان استجابة سريعة
         document.addEventListener('DOMContentLoaded', () => {
-            updateNavbar();
             refreshCartBadge(); 
         });
 
         // تم إلغاء الـ setTimeout القديم لأنه كان يسبب تأخراً (Delay) في ظهور البيانات
     </script>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -46,6 +46,7 @@ class ShoppingCartItemSerializer(serializers.ModelSerializer):
         تجلب رابط الصورة بالترتيب: 
         1. صورة القطعة (ProductItem) 
         2. صورة المنتج الأساسي (Product)
+        3. صورة افتراضية إذا لم توجد صورة
         """
         try:
             # التحقق من وجود صورة في ProductItem أولاً
@@ -63,8 +64,18 @@ class ShoppingCartItemSerializer(serializers.ModelSerializer):
                     return request.build_absolute_uri(image_field.url)
                 # في حالة عدم وجود طلب، نرجع المسار النسبي كحل احتياطي
                 return image_field.url
+            else:
+                # إرجاع صورة افتراضية إذا لم توجد صورة
+                request = self.context.get('request')
+                if request is not None:
+                    return request.build_absolute_uri('/static/images/no-image.svg')
+                return '/static/images/no-image.svg'
         except Exception:
-            return None
+            # في حالة الخطأ، نرجع الصورة الافتراضية
+            request = self.context.get('request')
+            if request is not None:
+                return request.build_absolute_uri('/static/images/no-image.svg')
+            return '/static/images/no-image.svg'
 
     def get_subtotal(self, obj):
         try:

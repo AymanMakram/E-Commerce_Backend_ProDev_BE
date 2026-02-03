@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+        <div>
+            <div class="small text-muted">الحساب</div>
+            <h3 class="mb-0" style="color:#0f172a; font-weight:800;">الملف الشخصي</h3>
+        </div>
+        <div class="d-flex gap-2">
+            <a id="profile-next-link" href="#" class="btn btn-sm btn-success text-white rounded-pill px-3 d-none">
+                <i class="fa-solid fa-arrow-left ms-2"></i> إكمال الطلب
+            </a>
+            <a href="/products/" class="btn btn-sm btn-outline-info rounded-pill px-3">
+                <i class="fa fa-arrow-right ms-2"></i> العودة للتسوق
+            </a>
+            <a href="/api/cart/view/" class="btn btn-sm btn-info text-white rounded-pill px-3" style="background:#00BCD4;border-color:#00BCD4;">
+                <i class="fa-solid fa-cart-shopping ms-2"></i> السلة
+            </a>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3" style="border-radius:18px; overflow:hidden;">
+        <div class="p-4" style="background:linear-gradient(135deg,#0f172a 0%, #0b2a3a 45%, #00BCD4 170%);">
+            <div class="d-flex flex-wrap justify-content-between align-items-center">
+                <div class="text-white">
+                    <div class="small" style="opacity:.85">أكمِل بياناتك لإتمام الطلب بسهولة</div>
+                    <div class="fw-bold" style="font-size:1.2rem;">ملفك جاهز للشراء خلال ثوانٍ</div>
+                </div>
+                <div class="text-white mt-3 mt-md-0" style="min-width:260px;">
+                    <div class="d-flex justify-content-between small mb-1" style="opacity:.9;">
+                        <span>اكتمال الملف</span>
+                        <span id="profile-progress-text">—</span>
+                    </div>
+                    <div class="progress" style="height:10px; border-radius:999px; background:rgba(255,255,255,.18);">
+                        <div id="profile-progress" class="progress-bar" role="progressbar" style="width:0%; background:#00BCD4;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="profile-missing-alert" class="alert alert-warning d-none border-0 shadow-sm" style="border-radius:14px;"></div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-5">
+            <div class="card border-0 shadow-sm" style="border-radius:18px;">
+                <div class="card-header border-0" style="background:#0f172a; color:#fff; border-radius:18px 18px 0 0;">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="fw-bold"><i class="fa-solid fa-user ms-2" style="color:#00BCD4;"></i> بيانات الحساب</div>
+                        <span class="badge" style="background:rgba(0,188,212,.15); color:#00BCD4; border:1px solid rgba(0,188,212,.35);">Secure</span>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <form id="profile-form" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label for="profile-username" class="form-label">اسم المستخدم</label>
+                            <input type="text" class="form-control" id="profile-username" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label for="profile-email" class="form-label">البريد الإلكتروني</label>
+                            <input type="email" class="form-control" id="profile-email" placeholder="name@example.com">
+                        </div>
+                        <div class="mb-3">
+                            <label for="profile-phone" class="form-label">رقم الهاتف</label>
+                            <input type="text" class="form-control" id="profile-phone" placeholder="01xxxxxxxxx">
+                            <div class="form-text text-muted">يفضل رقم مصري صحيح لتجنب مشاكل الشحن.</div>
+                        </div>
+                        <button id="profile-save-btn" type="submit" class="btn btn-info text-white rounded-pill px-4" style="background:#00BCD4;border-color:#00BCD4;">
+                            <span class="me-2"><i class="fa-solid fa-floppy-disk"></i></span>
+                            حفظ التعديلات
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-7">
+            <div class="card border-0 shadow-sm mb-3" style="border-radius:18px;">
+                <div class="card-header border-0" style="background:#0f172a; color:#fff; border-radius:18px 18px 0 0;">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="fw-bold"><i class="fa-solid fa-location-dot ms-2" style="color:#00BCD4;"></i> العناوين</div>
+                        <button class="btn btn-sm btn-outline-info rounded-pill" id="add-address-btn" type="button" style="border-color:#00BCD4;color:#00BCD4;">+ إضافة</button>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <ul id="address-list" class="list-group"></ul>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm" style="border-radius:18px;">
+                <div class="card-header border-0" style="background:#0f172a; color:#fff; border-radius:18px 18px 0 0;">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="fw-bold"><i class="fa-solid fa-credit-card ms-2" style="color:#00BCD4;"></i> طرق الدفع</div>
+                        <button class="btn btn-sm btn-outline-info rounded-pill" id="add-payment-btn" type="button" style="border-color:#00BCD4;color:#00BCD4;">+ إضافة</button>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <ul id="payment-list" class="list-group"></ul>
+                    <div class="small text-muted mt-3">لإتمام الطلب، يجب إضافة عنوان وطريقة دفع واحدة على الأقل.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Add Address (injected by JS, but fallback here for SEO/No-JS) -->
+<div class="modal fade" id="addAddressModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0f172a; color:#fff;">
+                <div>
+                    <h5 class="modal-title mb-0">إضافة عنوان جديد</h5>
+                    <div class="small" style="opacity:.85;">
+                        خطوة <span id="address-step-indicator">1</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-address-form">
+                    <div class="velo-step" data-step="1">
+                        <div class="mb-3">
+                            <label class="form-label">العنوان 1</label>
+                            <input type="text" class="form-control" id="address-line1" required>
+                            <div class="form-text text-muted">مثال: 12 شارع التحرير</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">الدولة</label>
+                            <select class="form-control" id="address-country" required>
+                                <option value="">اختر الدولة</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">المدينة</label>
+                            <input type="text" class="form-control" id="address-city" required>
+                        </div>
+                    </div>
+
+                    <div class="velo-step d-none" data-step="2">
+                        <div class="row g-2">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">المنطقة/المحافظة</label>
+                                <input type="text" class="form-control" id="address-region" required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">الرمز البريدي</label>
+                                <input type="text" class="form-control" id="address-postal" required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">رقم الوحدة</label>
+                                <input type="text" class="form-control" id="address-unit" required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">رقم الشارع</label>
+                                <input type="text" class="form-control" id="address-street-number" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">العنوان 2 (اختياري)</label>
+                                <input type="text" class="form-control" id="address-line2">
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="address-default">
+                                    <label class="form-check-label" for="address-default">تعيين كافتراضي</label>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="add-address-submit" type="submit" class="btn btn-info text-white w-100 rounded-pill mt-3" style="background:#00BCD4;border-color:#00BCD4;">إضافة</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button id="address-step-back" type="button" class="btn btn-outline-secondary rounded-pill px-4" disabled>رجوع</button>
+                <button id="address-step-next" type="button" class="btn btn-outline-info rounded-pill px-4" style="border-color:#00BCD4;color:#00BCD4;">التالي</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Add Payment Method -->
+<div class="modal fade" id="addPaymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0f172a; color:#fff;">
+                <div>
+                    <h5 class="modal-title mb-0">إضافة طريقة دفع</h5>
+                    <div class="small" style="opacity:.85;">
+                        خطوة <span id="payment-step-indicator">1</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-payment-form">
+                    <div class="velo-step" data-step="1">
+                        <div class="mb-3">
+                            <label class="form-label">نوع الدفع</label>
+                            <select class="form-control" id="payment-type" required>
+                                <option value="">اختر نوع الدفع</option>
+                            </select>
+                            <div class="form-text text-muted">مثال: Cash on Delivery أو Visa</div>
+                        </div>
+                    </div>
+
+                    <div class="velo-step d-none" data-step="2">
+                        <div id="payment-cod-note" class="alert alert-info border-0 d-none" style="border-radius:14px;">
+                            <div class="fw-bold mb-1">الدفع عند الاستلام</div>
+                            <div class="small">لن نطلب تفاصيل بطاقة. سيتم حفظ طريقة الدفع كـ Cash on Delivery.</div>
+                        </div>
+
+                        <div id="payment-provider-group" class="mb-3">
+                            <label class="form-label">مزود الخدمة (Provider)</label>
+                            <input type="text" class="form-control" id="payment-provider" required>
+                        </div>
+                        <div id="payment-account-group" class="mb-3">
+                            <label class="form-label">رقم الحساب</label>
+                            <input type="text" class="form-control" id="payment-account" required>
+                        </div>
+                        <div id="payment-expiry-group" class="mb-3">
+                            <label class="form-label">تاريخ الانتهاء</label>
+                            <input type="date" class="form-control" id="payment-expiry" required>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="payment-default">
+                            <label class="form-check-label" for="payment-default">تعيين كافتراضي</label>
+                        </div>
+                        <button id="add-payment-submit" type="submit" class="btn btn-info text-white w-100 rounded-pill" style="background:#00BCD4;border-color:#00BCD4;">إضافة</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button id="payment-step-back" type="button" class="btn btn-outline-secondary rounded-pill px-4" disabled>رجوع</button>
+                <button id="payment-step-next" type="button" class="btn btn-outline-info rounded-pill px-4" style="border-color:#00BCD4;color:#00BCD4;">التالي</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'frontend/js/profile.js' %}?v={% now 'U' %}"></script>
+{% endblock %}

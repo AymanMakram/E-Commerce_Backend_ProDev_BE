@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from products.views import ProductViewSet, ProductCategoryViewSet
+from products.views import ProductViewSet, ProductCategoryViewSet, ProductItemViewSet
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -27,11 +27,13 @@ from django.views.generic import TemplateView
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
+from products.views_customer import product_detail_view, product_list_view
 
 
 router = DefaultRouter()
 router.register(r'categories', ProductCategoryViewSet, basename='ProductCategory')
 router.register(r'products', ProductViewSet, basename='product')
+router.register(r'product-items', ProductItemViewSet, basename='product-item')
 router.register(r'orders', OrderViewSet, basename='order')
 
 
@@ -40,14 +42,26 @@ schema_view = get_schema_view(
    public=True,
 )
 
+from django.views.generic import RedirectView
+
 urlpatterns = [
-    path('', RedirectView.as_view(url='/products/'), name='go-to-products'),
+    path('', RedirectView.as_view(url='/api/accounts/login-view/'), name='go-to-login'),
+    # Default route: go to login view
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
     path('api/accounts/', include('accounts.urls')),
-    path('api/products/', include('products.urls')),
     path('api/cart/', include('cart.urls')),
-    path('products/', TemplateView.as_view(template_name='products/list.html'), name='product_list'),
+    # Serve static HTML for SPA entry points
+    path('products/', product_list_view, name='product_list'),
+    path('products/<int:product_id>/', product_detail_view, name='product_detail'),
+    path('profile/', TemplateView.as_view(template_name='auth/customer_profile.html'), name='customer_profile'),
+    path('orders/', TemplateView.as_view(template_name='orders/order_history.html'), name='order_history'),
+    path('orders/track/<int:order_id>/', TemplateView.as_view(template_name='orders/track_order.html'), name='track_order'),
+    path('seller/orders/', TemplateView.as_view(template_name='orders/seller_orders.html'), name='seller_orders'),
+    path('seller/', TemplateView.as_view(template_name='products/seller_dashboard.html'), name='seller_dashboard'),
+    path('cart/', TemplateView.as_view(template_name='cart/cart_detail.html'), name='cart_detail_page'),
+    # Retired legacy checkout page; use modern cart modal checkout flow.
+    path('cart/checkout/', RedirectView.as_view(url='/cart/', permanent=False), name='cart_checkout'),
     # Swagger Documentation
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0)),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

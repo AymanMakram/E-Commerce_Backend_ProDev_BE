@@ -45,11 +45,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/products.js' %}?v={% now 'U' %}"></script>
-<script>
-    // حماية الصفحة: لو مفيش توكن، رجعه فوراً للـ Login
-    if (!localStorage.getItem('access_token')) {
-        window.location.replace('/api/accounts/login-view/');
-    }
-</script>
+<script src="{% static 'frontend/js/products.js' %}?v={% now 'U' %}"></script>
 {% endblock %}

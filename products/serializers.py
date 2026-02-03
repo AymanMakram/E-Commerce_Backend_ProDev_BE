@@ -14,11 +14,16 @@ class VariationOptionSerializer(serializers.ModelSerializer):
         fields = ['id', 'variation_name', 'value']
 
 class ProductItemSerializer(serializers.ModelSerializer):
+    product = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(),
+        write_only=True,
+        required=False,
+    )
     options = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductItem
-        fields = ['id', 'sku', 'qty_in_stock', 'price', 'product_image', 'options']
+        fields = ['id', 'product', 'sku', 'qty_in_stock', 'price', 'product_image', 'options']
 
     def get_options(self, obj):
         configs = ProductConfiguration.objects.filter(product_item=obj)

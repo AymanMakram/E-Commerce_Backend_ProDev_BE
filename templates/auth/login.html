@@ -56,9 +56,9 @@
             <p class="text-muted">مرحباً بك! سجل دخولك للمتابعة</p>
         </div>
 
+
         <form id="login-form">
-            {% csrf_token %} 
-            
+            {% csrf_token %}
             <div class="mb-3">
                 <label class="form-label fw-semibold">اسم المستخدم</label>
                 <div class="input-group">
@@ -66,7 +66,6 @@
                     <input type="text" id="username" class="form-control bg-light border-0 py-2" placeholder="أدخل اسم المستخدم" required>
                 </div>
             </div>
-
             <div class="mb-4">
                 <div class="d-flex justify-content-between">
                     <label class="form-label fw-semibold">كلمة المرور</label>
@@ -77,20 +76,15 @@
                     <input type="password" id="password" class="form-control bg-light border-0 py-2" placeholder="********" required>
                 </div>
             </div>
-
             <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="remember">
                 <label class="form-check-label small" for="remember">تذكرني</label>
             </div>
-
-            <button type="submit" 
-                    id="login-btn" 
-                    class="btn btn-info w-100 text-white fw-bold py-2 rounded-3">
+            <button type="submit" id="login-btn" class="btn btn-info w-100 text-white fw-bold py-2 rounded-3">
                 <span class="spinner-border spinner-border-sm d-none me-2" id="login-spinner"></span>
                 دخول
             </button>
         </form>
-
         <div id="login-error" class="alert alert-danger mt-3 d-none"></div>
 
         <div class="text-center mt-4 border-top pt-3">
@@ -101,7 +95,7 @@
     </div>
 </div>
 
-<script src="{% static 'js/auth/auth.js' %}?v={% now 'U' %}"></script>
+<script src="{% static 'frontend/js/auth.js' %}?v={% now 'U' %}"></script>
 
 </body>
 </html>

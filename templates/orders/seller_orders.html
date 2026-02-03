@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1" style="color:#0f172a;">طلبات المتجر</h2>
+            <div class="text-muted">إدارة الطلبات وتحديث الحالة بسرعة</div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a class="btn btn-outline-info rounded-pill" href="/seller/" style="border-color:#00BCD4;color:#00BCD4;">لوحة التحكم</a>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm p-3 mb-3" style="border-radius:16px;">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label small text-muted mb-1" for="so-search">بحث</label>
+                <input id="so-search" type="text" class="form-control" placeholder="رقم الطلب (مثال: 123)" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label small text-muted mb-1" for="so-status">الحالة</label>
+                <select id="so-status" class="form-select">
+                    <option value="">كل الحالات</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1" for="so-date-from">من</label>
+                <input id="so-date-from" type="date" class="form-control" />
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1" for="so-date-to">إلى</label>
+                <input id="so-date-to" type="date" class="form-control" />
+            </div>
+            <div class="col-12 col-md-1 d-grid">
+                <button id="so-apply" type="button" class="btn btn-info text-white rounded-pill">تطبيق</button>
+            </div>
+        </div>
+        <div class="d-flex flex-nowrap overflow-auto gap-2 mt-3 pb-1" id="so-status-chips" style="-webkit-overflow-scrolling:touch;"></div>
+        <div class="d-flex flex-wrap gap-2 mt-2">
+            <button id="so-reset" type="button" class="btn btn-sm btn-outline-secondary rounded-pill">مسح</button>
+            <div class="small text-muted" id="so-meta"></div>
+        </div>
+    </div>
+
+    <div id="seller-orders-root"></div>
+    <div id="seller-orders-pagination"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'frontend/js/seller_orders.js' %}?v={% now 'U' %}"></script>
+{% endblock %}

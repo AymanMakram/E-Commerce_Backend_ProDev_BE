@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="text-center mb-5">
+        <h1 class="fw-bold" style="color: #00BCD4;">لوحة تحكم البائع</h1>
+        <p class="text-muted">إدارة منتجاتك: إضافة، تعديل، حذف، ورفع الصور</p>
+    </div>
+
+    <!-- Add Product Form -->
+    <div class="card mb-5 shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">إضافة منتج جديد</h5>
+        </div>
+        <div class="card-body">
+            <form id="add-product-form" enctype="multipart/form-data">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="product-name" class="form-label">اسم المنتج</label>
+                        <input type="text" class="form-control" id="product-name" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="product-category" class="form-label">الفئة</label>
+                        <select class="form-control" id="product-category" required>
+                            <option value="">اختر الفئة</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="product-description" class="form-label">وصف المنتج</label>
+                    <textarea class="form-control" id="product-description" rows="3" required></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="product-image" class="form-label">صورة المنتج</label>
+                    <input type="file" class="form-control" id="product-image" accept="image/*">
+                </div>
+                <button type="submit" class="btn btn-primary">إضافة المنتج</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Products List -->
+    <div class="card shadow">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">منتجاتي</h5>
+        </div>
+        <div class="card-body">
+            <div id="products-list" class="row">
+                <div class="col-12 text-center py-5" id="loader">
+                    <div class="spinner-border text-info"></div>
+                </div>
+            </div>
+            <div id="seller-pagination"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Product Modal -->
+<div class="modal fade" id="editProductModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تعديل المنتج</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-product-form" enctype="multipart/form-data">
+                    <input type="hidden" id="edit-product-id">
+                    <div class="mb-3">
+                        <label for="edit-product-name" class="form-label">اسم المنتج</label>
+                        <input type="text" class="form-control" id="edit-product-name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-product-category" class="form-label">الفئة</label>
+                        <select class="form-control" id="edit-product-category" required>
+                            <option value="">اختر الفئة</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-product-description" class="form-label">وصف المنتج</label>
+                        <textarea class="form-control" id="edit-product-description" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-product-image" class="form-label">صورة المنتج (اترك فارغاً للاحتفاظ بالصورة الحالية)</label>
+                        <input type="file" class="form-control" id="edit-product-image" accept="image/*">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" id="save-edit-btn">حفظ التغييرات</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Product Item (SKU) Modal -->
+<div class="modal fade" id="productItemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">إضافة SKU</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="product-item-form" enctype="multipart/form-data">
+                    <input type="hidden" id="product-item-id">
+                    <input type="hidden" id="product-item-product-id">
+                    <div class="mb-3">
+                        <label for="product-item-sku" class="form-label">SKU</label>
+                        <input type="text" class="form-control" id="product-item-sku" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="product-item-qty" class="form-label">الكمية بالمخزون</label>
+                            <input type="number" class="form-control" id="product-item-qty" min="0" value="0" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="product-item-price" class="form-label">السعر</label>
+                            <input type="number" step="0.01" class="form-control" id="product-item-price" min="0" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="product-item-image" class="form-label">صورة SKU (اختياري)</label>
+                        <input type="file" class="form-control" id="product-item-image" accept="image/*">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="save-item-btn">حفظ</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'frontend/js/seller_dashboard.js' %}?v={% now 'U' %}"></script>
+{% endblock %}

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ShopOrder, OrderLine
+from .models import ShopOrder, OrderLine, OrderStatus
 from finance.models import Transaction
 
 class OrderLineSerializer(serializers.ModelSerializer):
@@ -25,9 +25,14 @@ class ShopOrderSerializer(serializers.ModelSerializer):
     
     # عرض اسم حالة الطلب (مثلاً: Shipped, Pending) بدلاً من الرقم
     status_display = serializers.ReadOnlyField(source='order_status.status')
+
+    # Expose current status id for frontend dropdowns
+    order_status_id = serializers.ReadOnlyField(source='order_status.id')
     
     # جلب حالة الدفع من تطبيق Finance (مثل: Paid, Pending)
     payment_status = serializers.SerializerMethodField()
+
+    order_status = serializers.PrimaryKeyRelatedField(queryset=OrderStatus.objects.all(), required=False, write_only=True)
 
     class Meta:
         model = ShopOrder
@@ -36,9 +41,17 @@ class ShopOrderSerializer(serializers.ModelSerializer):
             'order_date', 
             'order_total', 
             'status_display', 
+            'order_status_id',
             'payment_status', 
-            'lines'
+            'lines',
+            'order_status', # for update
         ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Dynamically set queryset for order_status field
+        from .models import OrderStatus
+        self.fields['order_status'].queryset = OrderStatus.objects.all()
 
     def get_payment_status(self, obj):
         """
