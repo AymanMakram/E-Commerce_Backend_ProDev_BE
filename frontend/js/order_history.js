@@ -9,11 +9,41 @@
   const skeletonEl = document.getElementById('order-history-skeleton');
   const loadMoreBtn = document.getElementById('orders-load-more');
   const refreshBtn = document.getElementById('orders-refresh');
+  const searchInput = document.getElementById('orders-q');
+  const searchBtn = document.getElementById('orders-search');
+  const trackBtn = document.getElementById('orders-track');
 
   const state = {
     nextUrl: '/api/orders/my-orders/',
     loading: false,
   };
+
+  function getQueryFromUrl() {
+    try {
+      const u = new URL(window.location.href);
+      return (u.searchParams.get('q') || '').trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function setQueryToUrl(q) {
+    try {
+      const u = new URL(window.location.href);
+      if (q) u.searchParams.set('q', q);
+      else u.searchParams.delete('q');
+      window.history.replaceState({}, '', `${u.pathname}${u.search}`);
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  function buildMyOrdersUrl({ q } = {}) {
+    const base = '/api/orders/my-orders/';
+    const qs = String(q || '').trim();
+    if (!qs) return base;
+    return `${base}?q=${encodeURIComponent(qs)}`;
+  }
 
   function showToast(message, type = 'info') {
     if (typeof window.showToast === 'function') return window.showToast(message, type);
@@ -111,15 +141,44 @@
     }
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => {
-        state.nextUrl = '/api/orders/my-orders/';
+        const q = String(searchInput?.value || '').trim();
+        state.nextUrl = buildMyOrdersUrl({ q });
         loadPage(state.nextUrl, { reset: true });
       });
     }
+
+    const applySearch = () => {
+      const q = String(searchInput?.value || '').trim();
+      setQueryToUrl(q);
+      state.nextUrl = buildMyOrdersUrl({ q });
+      loadPage(state.nextUrl, { reset: true });
+    };
+
+    searchBtn?.addEventListener('click', applySearch);
+    searchInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applySearch();
+      }
+    });
+
+    trackBtn?.addEventListener('click', () => {
+      const q = String(searchInput?.value || '').trim();
+      if (!q || !/^[0-9]+$/.test(q)) {
+        showToast('اكتب رقم طلب صحيح للتتبع.', 'warning');
+        return;
+      }
+      window.location.href = `/orders/track/${q}/`;
+    });
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     if (!listEl) return;
     if (typeof window.request !== 'function') return;
+
+    const q = getQueryFromUrl();
+    if (searchInput && q) searchInput.value = q;
+    state.nextUrl = buildMyOrdersUrl({ q });
 
     bind();
     loadPage(state.nextUrl, { reset: true });

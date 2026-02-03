@@ -9,6 +9,26 @@
         </button>
     </div>
 
+    <div class="card border-0 shadow-sm p-3 mb-3" style="border-radius:16px;">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-6">
+                <label class="form-label small text-muted mb-1" for="orders-q">بحث/تتبع</label>
+                <input id="orders-q" type="text" class="form-control" placeholder="اكتب رقم الطلب (مثال: 123)" inputmode="numeric" />
+            </div>
+            <div class="col-6 col-md-3 d-grid">
+                <button id="orders-search" type="button" class="btn btn-outline-secondary rounded-pill">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> بحث
+                </button>
+            </div>
+            <div class="col-6 col-md-3 d-grid">
+                <button id="orders-track" type="button" class="btn btn-info text-white rounded-pill" style="background:#00BCD4;border-color:#00BCD4;">
+                    <i class="fa-solid fa-location-crosshairs me-1"></i> تتبع
+                </button>
+            </div>
+        </div>
+        <div class="small text-muted mt-2">زر "بحث" يعرض الطلب داخل السجل، وزر "تتبع" يفتح صفحة تتبع الطلب مباشرة.</div>
+    </div>
+
     <div id="order-history-skeleton" class="d-none">
         <div class="list-group">
             <div class="list-group-item mb-2" style="border-radius: 14px;">

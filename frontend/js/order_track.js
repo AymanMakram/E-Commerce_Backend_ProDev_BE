@@ -1,4 +1,5 @@
-// frontend/frontend/js/order_track.js
+// frontend/js/order_track.js
+// Kept in sync with frontend/frontend/js/order_track.js
 
 (function () {
   'use strict';

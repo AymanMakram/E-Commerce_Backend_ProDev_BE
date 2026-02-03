@@ -32,6 +32,10 @@ class ShopOrderSerializer(serializers.ModelSerializer):
     # جلب حالة الدفع من تطبيق Finance (مثل: Paid, Pending)
     payment_status = serializers.SerializerMethodField()
 
+    shipping_address_details = serializers.SerializerMethodField()
+    customer_phone_number = serializers.SerializerMethodField()
+    customer_username = serializers.ReadOnlyField(source='user.username')
+
     order_status = serializers.PrimaryKeyRelatedField(queryset=OrderStatus.objects.all(), required=False, write_only=True)
 
     class Meta:
@@ -43,6 +47,9 @@ class ShopOrderSerializer(serializers.ModelSerializer):
             'status_display', 
             'order_status_id',
             'payment_status', 
+            'shipping_address_details',
+            'customer_phone_number',
+            'customer_username',
             'lines',
             'order_status', # for update
         ]
@@ -65,3 +72,29 @@ class ShopOrderSerializer(serializers.ModelSerializer):
         except Exception:
             # في حالة عدم وجود سجل أو حدوث خطأ
             return "Pending"
+
+    def get_customer_phone_number(self, obj):
+        try:
+            return getattr(obj.user, 'phone_number', None)
+        except Exception:
+            return None
+
+    def get_shipping_address_details(self, obj):
+        addr = getattr(obj, 'shipping_address', None)
+        if not addr:
+            return None
+        try:
+            country_name = getattr(getattr(addr, 'country', None), 'country_name', None)
+            return {
+                'id': getattr(addr, 'id', None),
+                'unit_number': getattr(addr, 'unit_number', None),
+                'street_number': getattr(addr, 'street_number', None),
+                'address_line1': getattr(addr, 'address_line1', None),
+                'address_line2': getattr(addr, 'address_line2', None),
+                'city': getattr(addr, 'city', None),
+                'region': getattr(addr, 'region', None),
+                'postal_code': getattr(addr, 'postal_code', None),
+                'country_name': country_name,
+            }
+        except Exception:
+            return None

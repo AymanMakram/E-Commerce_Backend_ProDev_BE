@@ -179,6 +179,11 @@
   }
 
   function orderCardHtml(order, statuses) {
+    const addr = order?.shipping_address_details || null;
+    const shipShort = addr ? [addr.city, addr.region].filter(Boolean).join('، ') : '';
+    const customerPhone = order?.customer_phone_number || '';
+    const customerUsername = order?.customer_username || '';
+
     return `
       <div class="card border-0 shadow-sm p-4 mb-3" style="border-radius:16px;">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
@@ -186,6 +191,9 @@
             <div class="fw-bold" style="color:#0f172a;">طلب رقم #${order.id}</div>
             <div class="text-muted small">تاريخ الطلب: ${formatDate(order.order_date)}</div>
             <div class="text-muted small">حالة الدفع: <span class="fw-bold">${order.payment_status || 'Pending'}</span></div>
+            ${shipShort ? `<div class="text-muted small">الشحن: <span class="fw-bold">${shipShort}</span></div>` : ''}
+            ${customerUsername ? `<div class="text-muted small">العميل: <span class="fw-bold">${customerUsername}</span></div>` : ''}
+            ${customerPhone ? `<div class="text-muted small">هاتف العميل: <span class="fw-bold">${customerPhone}</span></div>` : ''}
           </div>
           <div class="text-end">
             <div class="text-muted small">الإجمالي</div>

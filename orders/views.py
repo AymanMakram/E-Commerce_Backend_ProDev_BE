@@ -33,6 +33,39 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     # Seller-specific endpoint: all orders containing their products
     from rest_framework.decorators import action
+
+    @action(detail=False, methods=['get'], url_path='my-orders')
+    def my_orders(self, request):
+        """Customer-only endpoint: list the authenticated customer's orders with pagination."""
+        user = request.user
+        if getattr(user, 'user_type', None) == 'seller':
+            return Response({'detail': 'Not authorized.'}, status=403)
+
+        orders = self.get_queryset().order_by('-order_date')
+
+        q = (request.query_params.get('q') or '').strip()
+        if q.isdigit():
+            orders = orders.filter(id=int(q))
+
+        status_id = request.query_params.get('status')
+        if status_id:
+            orders = orders.filter(order_status_id=status_id)
+
+        date_from = parse_date(request.query_params.get('date_from') or '')
+        if date_from:
+            orders = orders.filter(order_date__date__gte=date_from)
+
+        date_to = parse_date(request.query_params.get('date_to') or '')
+        if date_to:
+            orders = orders.filter(order_date__date__lte=date_to)
+
+        page = self.paginate_queryset(orders)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(orders, many=True)
+        return Response(serializer.data)
+
     @action(detail=False, methods=['get'], url_path='seller-orders')
     def seller_orders(self, request):
         user = request.user

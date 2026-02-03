@@ -91,11 +91,14 @@
     const brandLink = document.getElementById('nav-brand-link');
     const productsLink = document.getElementById('nav-products-link');
     const cartLink = document.getElementById('nav-cart-link');
+    const ordersLink = document.getElementById('nav-orders-link');
     const isSeller = Boolean(token) && userType === 'seller';
+    const isCustomerAuthed = Boolean(token) && !isSeller;
 
     if (brandLink) brandLink.setAttribute('href', isSeller ? '/seller/' : '/products/');
     if (productsLink) productsLink.classList.toggle('d-none', isSeller);
     if (cartLink) cartLink.classList.toggle('d-none', isSeller);
+    if (ordersLink) ordersLink.classList.toggle('d-none', !isCustomerAuthed);
 
     redirectSellerFromCustomerPages(isSeller);
 
