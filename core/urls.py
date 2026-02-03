@@ -59,6 +59,7 @@ urlpatterns = [
     path('orders/track/<int:order_id>/', TemplateView.as_view(template_name='orders/track_order.html'), name='track_order'),
     path('seller/orders/', TemplateView.as_view(template_name='orders/seller_orders.html'), name='seller_orders'),
     path('seller/', TemplateView.as_view(template_name='products/seller_dashboard.html'), name='seller_dashboard'),
+    path('seller/profile/', TemplateView.as_view(template_name='products/seller_profile.html'), name='seller_profile'),
     path('cart/', TemplateView.as_view(template_name='cart/cart_detail.html'), name='cart_detail_page'),
     # Retired legacy checkout page; use modern cart modal checkout flow.
     path('cart/checkout/', RedirectView.as_view(url='/cart/', permanent=False), name='cart_checkout'),

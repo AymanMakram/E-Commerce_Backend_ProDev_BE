@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 980px;">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+      <h2 class="fw-bold mb-1" style="color:#0f172a;">إعدادات البائع</h2>
+      <div class="text-muted">تحديث بيانات المتجر وبيانات التواصل</div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <a class="btn btn-outline-info rounded-pill" href="/seller/" style="border-color:#00BCD4;color:#00BCD4;">لوحة التحكم</a>
+      <a class="btn btn-outline-info rounded-pill" href="/seller/orders/" style="border-color:#00BCD4;color:#00BCD4;">الطلبات</a>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-4">
+      <div class="card border-0 shadow-sm p-4" style="border-radius:16px;">
+        <div class="d-flex align-items-center gap-3">
+          <div class="d-flex align-items-center justify-content-center" style="width:48px;height:48px;border-radius:14px;background:rgba(0,188,212,.12);">
+            <i class="fa-solid fa-store" style="color:#00BCD4;font-size:1.25rem;"></i>
+          </div>
+          <div>
+            <div class="fw-bold" style="color:#0f172a;">ملف البائع</div>
+            <div class="text-muted small" id="seller-meta">—</div>
+          </div>
+        </div>
+        <hr class="my-3" />
+        <div class="small text-muted">هذه الصفحة مخصصة للبائع فقط. تم إخفاء ميزات العميل (العناوين/الدفع/السلة).</div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-8">
+      <div class="card border-0 shadow-sm p-4" style="border-radius:16px;">
+        <form id="seller-profile-form" class="needs-validation" novalidate>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="sp-username">اسم المستخدم</label>
+              <input id="sp-username" class="form-control" type="text" disabled />
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="sp-user-type">نوع الحساب</label>
+              <input id="sp-user-type" class="form-control" type="text" disabled />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label" for="sp-store-name">اسم المتجر</label>
+              <input id="sp-store-name" class="form-control" type="text" placeholder="مثال: Velo Official" />
+              <div class="form-text">سيظهر للعملاء في الطلبات والتقارير.</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="sp-tax-number">الرقم الضريبي</label>
+              <input id="sp-tax-number" class="form-control" type="text" inputmode="numeric" placeholder="9 أرقام" />
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="sp-phone">هاتف التواصل</label>
+              <input id="sp-phone" class="form-control" type="text" placeholder="01xxxxxxxxx" />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label" for="sp-email">البريد الإلكتروني</label>
+              <input id="sp-email" class="form-control" type="email" placeholder="name@example.com" />
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <a class="btn btn-outline-secondary rounded-pill" href="/seller/">رجوع</a>
+            <button id="sp-save" type="submit" class="btn btn-info text-white rounded-pill" style="background:#00BCD4;border-color:#00BCD4;">
+              <span id="sp-save-text">حفظ</span>
+              <span id="sp-save-spinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <div id="sp-alert" class="alert d-none mt-3 mb-0" role="alert"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'frontend/js/seller_profile.js' %}?v={% now 'U' %}"></script>
+{% endblock %}

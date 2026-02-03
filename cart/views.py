@@ -2,6 +2,7 @@ from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny
+from rest_framework.exceptions import PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from .models import ShoppingCart, ShoppingCartItem
@@ -15,6 +16,11 @@ class CartViewSet(viewsets.ModelViewSet):
     serializer_class = ShoppingCartSerializer
     permission_classes = [AllowAny]
     authentication_classes = [CSRFExemptSessionAuthentication, JWTAuthentication, BasicAuthentication]
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if request.user.is_authenticated and getattr(request.user, 'user_type', None) == 'seller':
+            raise PermissionDenied('Sellers cannot use the customer cart.')
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
@@ -44,6 +50,11 @@ class CartItemViewSet(viewsets.ModelViewSet):
     serializer_class = ShoppingCartItemSerializer
     permission_classes = [AllowAny]
     authentication_classes = [CSRFExemptSessionAuthentication, JWTAuthentication, BasicAuthentication]
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if request.user.is_authenticated and getattr(request.user, 'user_type', None) == 'seller':
+            raise PermissionDenied('Sellers cannot use the customer cart.')
 
     def get_queryset(self):
         if self.request.user.is_authenticated:

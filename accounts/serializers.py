@@ -177,11 +177,25 @@ class UserPaymentMethodSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     addresses = serializers.SerializerMethodField()
     payment_methods = UserPaymentMethodSerializer(many=True, read_only=True)
+    store_name = serializers.SerializerMethodField()
+    tax_number = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'phone_number', 'user_type', 'addresses', 'payment_methods')
+        fields = ('id', 'username', 'email', 'phone_number', 'user_type', 'store_name', 'tax_number', 'addresses', 'payment_methods')
         read_only_fields = ('username', 'user_type')
+
+    def get_store_name(self, obj):
+        try:
+            return getattr(obj.seller_profile, 'store_name', None)
+        except Exception:
+            return None
+
+    def get_tax_number(self, obj):
+        try:
+            return getattr(obj.seller_profile, 'tax_number', None)
+        except Exception:
+            return None
 
     def get_addresses(self, obj):
         user_addresses = UserAddress.objects.filter(user=obj).select_related('address')

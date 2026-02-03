@@ -20,7 +20,8 @@ from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import User, Address, UserAddress, UserPaymentMethod
+from rest_framework.exceptions import PermissionDenied
+from .models import User, Address, UserAddress, UserPaymentMethod, SellerProfile
 from .serializers import UserProfileSerializer, AddressSerializer, RegisterSerializer, UserPaymentMethodSerializer
 
 from django.contrib.auth import authenticate, login
@@ -59,6 +60,10 @@ class UserProfileViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = UserProfileSerializer
 
+    def _deny_seller_customer_profile(self, request):
+        if getattr(request.user, 'user_type', None) == 'seller':
+            raise PermissionDenied('Customer profile features are not available for sellers.')
+
     @action(detail=False, methods=['get', 'put'])
     def me(self, request):
         user = request.user
@@ -69,10 +74,27 @@ class UserProfileViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+
+        # Seller-only settings stored on SellerProfile
+        if getattr(user, 'user_type', None) == 'seller':
+            store_name = request.data.get('store_name', None)
+            tax_number = request.data.get('tax_number', None)
+            if store_name is not None or tax_number is not None:
+                sp, _ = SellerProfile.objects.get_or_create(user=user)
+                if store_name is not None:
+                    s = str(store_name).strip()
+                    sp.store_name = s or None
+                if tax_number is not None:
+                    t = str(tax_number).strip()
+                    sp.tax_number = t or None
+                sp.save()
+
+        user.refresh_from_db()
+        return Response(self.get_serializer(user).data)
 
     @action(detail=False, methods=['post'], url_path='add-address')
     def add_address(self, request):
+        self._deny_seller_customer_profile(request)
         serializer = AddressSerializer(data=request.data)
         if serializer.is_valid():
             address = serializer.save()
@@ -89,6 +111,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['put', 'patch', 'delete'], url_path='addresses/(?P<address_id>[^/.]+)')
     def address_detail(self, request, address_id=None):
         """Update/Delete an address owned by the current user."""
+        self._deny_seller_customer_profile(request)
         ua = UserAddress.objects.filter(user=request.user, address_id=address_id).select_related('address').first()
         if not ua:
             return Response({'detail': 'Address not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -111,6 +134,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['patch'], url_path='addresses/(?P<address_id>[^/.]+)/set-default')
     def set_default_address(self, request, address_id=None):
+        self._deny_seller_customer_profile(request)
         ua = UserAddress.objects.filter(user=request.user, address_id=address_id).first()
         if not ua:
             return Response({'detail': 'Address not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -122,6 +146,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['get', 'post'], url_path='payment-methods')
     def payment_methods(self, request):
+        self._deny_seller_customer_profile(request)
         if request.method == 'GET':
             payments = UserPaymentMethod.objects.filter(user=request.user)
             serializer = UserPaymentMethodSerializer(payments, many=True)
@@ -136,6 +161,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['put', 'patch', 'delete'], url_path='payment-methods/(?P<payment_id>[^/.]+)')
     def payment_method_detail(self, request, payment_id=None):
+        self._deny_seller_customer_profile(request)
         payment = UserPaymentMethod.objects.filter(user=request.user, id=payment_id).first()
         if not payment:
             return Response({'detail': 'Payment method not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -157,6 +183,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['patch'], url_path='payment-methods/(?P<payment_id>[^/.]+)/set-default')
     def set_default_payment_method(self, request, payment_id=None):
+        self._deny_seller_customer_profile(request)
         payment = UserPaymentMethod.objects.filter(user=request.user, id=payment_id).first()
         if not payment:
             return Response({'detail': 'Payment method not found.'}, status=status.HTTP_404_NOT_FOUND)
