@@ -36,6 +36,7 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         libpq5 \
+        gosu \
     && rm -rf /var/lib/apt/lists/* \
     && adduser --disabled-password --gecos "" appuser
 
@@ -48,7 +49,8 @@ COPY . /app
 RUN chmod +x /app/docker/entrypoint.sh \
     && chown -R appuser:appuser /app
 
-USER appuser
+# Keep the container running as root so the entrypoint can fix permissions
+# on mounted volumes, then drop privileges with gosu.
 
 EXPOSE 8000
 
