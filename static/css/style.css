@@ -1,2 +1,14 @@
-body { font-family: 'Segoe UI', Tahoma, sans-serif; }
-.navbar-brand { letter-spacing: 1px; }
+/*
+ * Global site styles.
+ *
+ * Used by templates/base.html and most pages.
+ * Keep this file for app-wide rules; page-specific rules belong in a dedicated CSS.
+ */
+
+body {
+	font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+
+.navbar-brand {
+	letter-spacing: 1px;
+}

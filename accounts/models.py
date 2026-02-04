@@ -59,6 +59,12 @@ class UserAddress(models.Model):
     address = models.ForeignKey(Address, on_delete=models.CASCADE)
     is_default = models.BooleanField(default=False)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'is_default']),
+            models.Index(fields=['user', 'address']),
+        ]
+
 # 3. جداول الدفع
 class PaymentType(models.Model):
     """Payment method type (e.g., COD, Visa, PayPal)."""
@@ -76,6 +82,11 @@ class UserPaymentMethod(models.Model):
     expiry_date = models.DateField()
     is_default = models.BooleanField(default=False)
     def __str__(self): return f"{self.provider} - {self.user.username}"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'is_default']),
+        ]
 
 # 4. البروفايلات المتخصصة (إضافة)
 class CustomerProfile(models.Model):

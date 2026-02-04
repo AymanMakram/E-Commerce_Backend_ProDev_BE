@@ -1,6 +1,48 @@
-.product-card { border: none; border-radius: 20px; background: white; transition: 0.3s; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
-.product-card:hover { transform: translateY(-5px); }
-.img-wrapper { height: 180px; background: #f1f5f9; border-radius: 15px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.img-wrapper img { max-height: 80%; max-width: 80%; object-fit: contain; }
-.price-text { color: #00BCD4; font-weight: 800; font-size: 1.1rem; }
-.add-btn { background: #00BCD4; color: white; border: none; width: 35px; height: 35px; border-radius: 10px; }
+/*
+ * Product listing/detail styles.
+ *
+ * Referenced by product templates.
+ */
+
+.product-card {
+	border: none;
+	border-radius: 20px;
+	background: white;
+	transition: 0.3s;
+	box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
+
+.product-card:hover {
+	transform: translateY(-5px);
+}
+
+.img-wrapper {
+	height: 180px;
+	background: #f1f5f9;
+	border-radius: 15px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+}
+
+.img-wrapper img {
+	max-height: 80%;
+	max-width: 80%;
+	object-fit: contain;
+}
+
+.price-text {
+	color: #00BCD4;
+	font-weight: 800;
+	font-size: 1.1rem;
+}
+
+.add-btn {
+	background: #00BCD4;
+	color: white;
+	border: none;
+	width: 35px;
+	height: 35px;
+	border-radius: 10px;
+}

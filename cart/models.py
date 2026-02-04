@@ -11,6 +11,11 @@ class ShoppingCart(models.Model):
     session_id = models.CharField(max_length=40, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['session_id']),
+        ]
+
     def __str__(self):
         if self.user:
             return f"Cart of {self.user.username}"

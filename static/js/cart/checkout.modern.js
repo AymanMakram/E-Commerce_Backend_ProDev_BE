@@ -1,41 +1,53 @@
-// Modern Checkout Page Frontend
-// Fetches data from APIs and renders with best practices (async/await, modular, clean UI)
+/**
+ * Checkout page frontend.
+ *
+ * Notes:
+ * - This template extends base.html, so shared utilities (api.js/base.js/auth.js)
+ *   are loaded after the page HTML. To avoid race conditions, initialization
+ *   happens on DOMContentLoaded.
+ * - Uses JWT from localStorage for auth (same as other frontend scripts).
+ */
 
-class CheckoutPage {
-    constructor() {
-        this.token = localStorage.getItem('access_token');
-        this.addressSection = document.getElementById('address-section');
-        this.paymentSection = document.getElementById('payment-section');
-        this.paymentFormSection = document.getElementById('payment-form-section');
-        this.loader = document.getElementById('checkout-loader');
-        this.form = document.getElementById('checkout-form');
-        this.selectedPaymentId = null;
-        this.selectedAddressId = null;
-        this.addressExists = false;
-        this.paymentExists = false;
-        this.init();
-    }
+(function () {
+    'use strict';
 
-    async init() {
-        await this.loadProfileData();
-        this.loader.style.display = 'none';
-        this.form.style.display = '';
-        this.form.onsubmit = (e) => this.submitOrder(e);
-    }
-
-    async loadProfileData() {
-        try {
-            const res = await fetch('/api/accounts/profile/me/', {
-                headers: { 'Authorization': `Bearer ${this.token}` }
-            });
-            const profile = await res.json();
-            this.renderAddress(profile.addresses || []);
-            this.renderPayments(profile.payment_methods || []);
-        } catch (e) {
-            this.addressSection.innerHTML = '<div class="alert alert-danger">فشل تحميل البيانات.</div>';
-            this.paymentSection.innerHTML = '';
+    class CheckoutPage {
+        constructor() {
+            this.token = null;
+            try { this.token = localStorage.getItem('access_token'); } catch (_) { /* ignore */ }
+            this.addressSection = document.getElementById('address-section');
+            this.paymentSection = document.getElementById('payment-section');
+            this.paymentFormSection = document.getElementById('payment-form-section');
+            this.loader = document.getElementById('checkout-loader');
+            this.form = document.getElementById('checkout-form');
+            this.selectedPaymentId = null;
+            this.selectedAddressId = null;
+            this.addressExists = false;
+            this.paymentExists = false;
         }
-    }
+
+        async init() {
+            await this.loadProfileData();
+            if (this.loader) this.loader.style.display = 'none';
+            if (this.form) this.form.style.display = '';
+            if (this.form) this.form.onsubmit = (e) => this.submitOrder(e);
+        }
+
+        async loadProfileData() {
+            try {
+                const res = await fetch('/api/accounts/profile/me/', {
+                    headers: this.token ? { 'Authorization': `Bearer ${this.token}` } : {},
+                    credentials: 'include',
+                });
+                if (!res.ok) throw new Error('profile');
+                const profile = await res.json();
+                this.renderAddress(profile.addresses || []);
+                this.renderPayments(profile.payment_methods || []);
+            } catch (e) {
+                if (this.addressSection) this.addressSection.innerHTML = '<div class="alert alert-danger">فشل تحميل البيانات.</div>';
+                if (this.paymentSection) this.paymentSection.innerHTML = '';
+            }
+        }
 
     renderAddress(addresses) {
         if (addresses.length > 0) {
@@ -76,7 +88,10 @@ class CheckoutPage {
         const city = document.getElementById('page-address-city').value.trim();
         const street = document.getElementById('page-address-street').value.trim();
         const country = document.getElementById('page-address-country').value.trim();
-        if (!city || !street || !country) { alert('يرجى تعبئة جميع الحقول'); return; }
+        if (!city || !street || !country) {
+            if (typeof window.showToast === 'function') window.showToast('يرجى تعبئة جميع الحقول', 'warning');
+            return;
+        }
         try {
             const res = await fetch('/api/accounts/profile/add-address/', {
                 method: 'POST',
@@ -89,9 +104,11 @@ class CheckoutPage {
             if (res.ok) {
                 await this.loadProfileData();
             } else {
-                alert('فشل حفظ العنوان');
+                if (typeof window.showToast === 'function') window.showToast('فشل حفظ العنوان', 'danger');
             }
-        } catch (e) { alert('خطأ في الاتصال بالخادم'); }
+        } catch (e) {
+            if (typeof window.showToast === 'function') window.showToast('خطأ في الاتصال بالخادم', 'danger');
+        }
     }
 
     renderPayments(payments) {
@@ -308,9 +325,11 @@ class CheckoutPage {
         errDiv.textContent = msg;
         setTimeout(() => { errDiv.remove(); }, 4000);
     }
-}
+    }
 
-// Initialize modern checkout page
-if (document.getElementById('checkout-form')) {
-    new CheckoutPage();
-}
+    document.addEventListener('DOMContentLoaded', async () => {
+        if (!document.getElementById('checkout-form')) return;
+        const page = new CheckoutPage();
+        await page.init();
+    });
+})();

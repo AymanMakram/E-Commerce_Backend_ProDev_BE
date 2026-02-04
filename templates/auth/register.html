@@ -195,68 +195,6 @@
     </div>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const radios = document.getElementsByName('user_type');
-        const mTitle = document.getElementById('m-title');
-        const mDesc = document.getElementById('m-desc');
-        const customerFields = document.getElementById('customer-fields');
-        const sellerFields = document.getElementById('seller-fields');
-        
-        // جلب المدخلات للتحكم في الـ Required ديناميكياً
-        const phoneInput = document.getElementById('phone_number');
-        const storeInput = document.getElementById('store_name');
-        const sellerPhoneInput = document.getElementById('seller_phone');
-        const taxInput = document.getElementById('tax_number');
-
-        const marketingText = {
-            customer: {
-                title: 'تسوّق بذكاء.. عالم من الخيارات <span class="text-cyan">بين يديك</span>',
-                desc: 'اكتشف أفضل المنتجات بأفضل الأسعار في تجربة تسوق استثنائية صُممت لأجلك.'
-            },
-            seller: {
-                title: 'حوّل شغفك إلى <span class="text-cyan">أرباح</span> لا تتوقف',
-                desc: 'انضم إلى المنصة الأكثر نمواً وابدأ ببيع منتجاتك لآلاف العملاء في دقائق.'
-            }
-        };
-
-        radios.forEach(radio => {
-            radio.addEventListener('change', function() {
-                const type = this.value;
-                
-                mTitle.style.opacity = '0';
-                mDesc.style.opacity = '0';
-                
-                setTimeout(() => {
-                    mTitle.innerHTML = marketingText[type].title;
-                    mDesc.innerText = marketingText[type].desc;
-                    mTitle.style.opacity = '1';
-                    mDesc.style.opacity = '1';
-                }, 200);
-
-                if (type === 'seller') {
-                    sellerFields.classList.remove('d-none');
-                    customerFields.classList.add('d-none');
-                    
-                    // تفعيل إلزامية حقول التاجر وتعطيل العميل
-                    storeInput.required = true;
-                    sellerPhoneInput.required = true;
-                    taxInput.required = true;
-                    phoneInput.required = false;
-                } else {
-                    customerFields.classList.remove('d-none');
-                    sellerFields.classList.add('d-none');
-                    
-                    // تفعيل إلزامية العميل وتعطيل التاجر
-                    phoneInput.required = true;
-                    storeInput.required = false;
-                    sellerPhoneInput.required = false;
-                    taxInput.required = false;
-                }
-            });
-        });
-    });
-</script>
 <script src="{% static 'frontend/js/register.js' %}?v={% now 'U' %}"></script>
 </body>
 </html>

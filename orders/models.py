@@ -34,6 +34,11 @@ class ShopOrder(models.Model):
     class Meta:
         verbose_name = "Shop Order"
         verbose_name_plural = "Shop Orders"
+        indexes = [
+            models.Index(fields=['user', 'order_date']),
+            models.Index(fields=['order_status', 'order_date']),
+            models.Index(fields=['user', 'order_status', 'order_date']),
+        ]
 
     def __str__(self):
         return f"Order #{self.id} - {self.user.username}"
@@ -49,6 +54,9 @@ class OrderLine(models.Model):
     class Meta:
         verbose_name = "Order Item"
         verbose_name_plural = "Order Items"
+        indexes = [
+            models.Index(fields=['order', 'product_item']),
+        ]
 
     def __str__(self):
         return f"Line for Order #{self.order.id} - {self.product_item}"

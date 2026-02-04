@@ -14,6 +14,9 @@ class ProductCategory(models.Model):
         return self.category_name
     class Meta:
         verbose_name_plural = "Product Categories"
+        indexes = [
+            models.Index(fields=['category_name']),
+        ]
 
 # 2. جدول المنتجات الأساسي (تم إضافة حقل الـ seller)
 class Product(models.Model):
@@ -40,6 +43,10 @@ class Product(models.Model):
     
     class Meta:
         ordering = ['id']
+        indexes = [
+            models.Index(fields=['is_published', 'category']),
+            models.Index(fields=['seller', 'category']),
+        ]
 
 # 3. جداول الاختلافات (Variations)
 class Variation(models.Model):
@@ -60,6 +67,11 @@ class VariationOption(models.Model):
     def __str__(self):
         return self.value
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['variation', 'value']),
+        ]
+
 # 4. تفاصيل المنتج (Price, Stock, SKU)
 class ProductItem(models.Model):
     """Specific purchasable SKU for a product."""
@@ -79,3 +91,8 @@ class ProductConfiguration(models.Model):
 
     product_item = models.ForeignKey(ProductItem, on_delete=models.CASCADE, related_name='configurations')
     variation_option = models.ForeignKey(VariationOption, on_delete=models.CASCADE)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['product_item', 'variation_option']),
+        ]
