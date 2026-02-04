@@ -4,7 +4,6 @@ from .models import ShopOrder
 from .serializers import ShopOrderSerializer
 from products.views import StandardResultsSetPagination # هنستعمل نفس الترقيم
 
-from products.models import Product
 from django.utils.dateparse import parse_date
 from django.utils import timezone
 
@@ -17,17 +16,20 @@ class OrderViewSet(viewsets.ModelViewSet):
     ordering = ['-order_date']
 
     def get_queryset(self):
+        """Base queryset for the authenticated user.
+
+        - Sellers: orders that contain any SKU belonging to the seller.
+        - Customers: their own orders.
+        """
         user = self.request.user
         if user.is_authenticated and getattr(user, 'user_type', None) == 'seller':
-            # Seller can see orders that contain any of their product items
-            seller_products = Product.objects.filter(seller=user)
-            product_item_ids = []
-            for p in seller_products:
-                product_item_ids.extend(list(p.items.values_list('id', flat=True)))
-
-            from .models import OrderLine
-            order_ids = OrderLine.objects.filter(product_item_id__in=product_item_ids).values_list('order_id', flat=True).distinct()
-            return ShopOrder.objects.filter(id__in=order_ids).order_by('-order_date')
+            # Seller can see orders that contain any of their product items.
+            # Use relational filtering to avoid N+1 loops.
+            return (
+                ShopOrder.objects.filter(lines__product_item__product__seller=user)
+                .distinct()
+                .order_by('-order_date')
+            )
 
         # Default: customer sees their own orders
         return ShopOrder.objects.filter(user=user)
@@ -69,6 +71,10 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='seller-orders')
     def seller_orders(self, request):
+        """Seller-only: list orders that include any of the seller's SKUs.
+
+        Supports optional filters: `status`, `q` (order id), `date_from`, `date_to`.
+        """
         user = request.user
         if not hasattr(user, 'user_type') or user.user_type != 'seller':
             return Response({'detail': 'Not authorized.'}, status=403)
@@ -183,14 +189,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not hasattr(user, 'user_type') or user.user_type != 'seller':
             return Response({'detail': 'Not authorized.'}, status=403)
         order = self.get_object()
-        # Check if seller owns any product in this order
-        from products.models import Product
-        seller_products = Product.objects.filter(seller=user)
-        seller_item_ids = set()
-        for p in seller_products:
-            seller_item_ids.update(p.items.values_list('id', flat=True))
-        order_item_ids = set(order.lines.values_list('product_item_id', flat=True))
-        if not (seller_item_ids & order_item_ids):
+        # Check if seller owns any product in this order (efficient EXISTS query)
+        if not order.lines.filter(product_item__product__seller=user).exists():
             return Response({'detail': 'You do not have permission to update this order.'}, status=403)
         # Update status
         status_id = request.data.get('order_status')
