@@ -16,6 +16,9 @@ media/
 staticfiles/
 static_root/
 
+# Legacy/backup static folders (should never be committed)
+static/js_backup/
+
 # --- Python System Files ---
 __pycache__/
 *.py[cod]
