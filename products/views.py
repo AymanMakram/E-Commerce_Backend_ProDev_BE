@@ -1,7 +1,14 @@
-from rest_framework import viewsets, filters, permissions, status
+"""Products API views.
+
+Includes CRUD for products/SKUs and read-only access to categories.
+Filtering/search/ordering/pagination are provided for list endpoints.
+"""
+
+from rest_framework import viewsets, filters, status
 from rest_framework.response import Response
 from .models import Product, ProductCategory, ProductItem
 from .serializers import ProductSerializer, ProductCategorySerializer, ProductItemSerializer
+from .permissions import IsSellerOrReadOnly, IsSellerOrReadOnlyForProductItem
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import generics
@@ -9,35 +16,27 @@ from rest_framework.decorators import action
 
 # 2. تعريف كلاس التحكم في العدد (Pagination)
 class StandardResultsSetPagination(PageNumberPagination):
+    """Default pagination used by most API endpoints."""
     page_size = 20 # الرقم اللي اتفقنا عليه كـ Best Practice
     page_size_query_param = 'page_size'
     max_page_size = 100
 
 # 3. الـ View اللي بيربط كل حاجة ببعض
 class ProductListView(generics.ListAPIView):
+    """List products with pagination (legacy endpoint; router endpoints preferred)."""
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     # هنا بنربط الـ View بالكلاس اللي فوق عشان يطبق القواعد بتاعته
     pagination_class = StandardResultsSetPagination
 
-
-# 2. نظام صلاحيات مخصص (يُفضل وضعه في ملف permissions.py أو هنا مؤقتاً)
-class IsSellerOrReadOnly(permissions.BasePermission):
-    def has_permission(self, request, view):
-        # القراءة مسموحة للكل (GET, HEAD, OPTIONS)
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        # الكتابة مسموحة فقط لمن نوعه seller ومسجل دخول
-        return request.user.is_authenticated and request.user.user_type == 'seller'
-
-    def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        # البائع يعدل منتجاته هو فقط
-        return obj.seller == request.user
-
 # 3. محول المنتجات المحدث
-class ProductViewSet(viewsets.ModelViewSet): # تم تغييرها من ReadOnly لـ ModelViewSet للسماح بالـ POST
+class ProductViewSet(viewsets.ModelViewSet):
+    """Products CRUD.
+
+    - Public users: can read published products only.
+    - Sellers: can CRUD only their own products.
+    """
+
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     pagination_class = StandardResultsSetPagination
@@ -54,8 +53,16 @@ class ProductViewSet(viewsets.ModelViewSet): # تم تغييرها من ReadOnly
     def get_queryset(self):
         user = self.request.user
         if user.is_authenticated and getattr(user, 'user_type', None) == 'seller':
-            return Product.objects.filter(seller=user)
-        return Product.objects.filter(is_published=True)
+            return (
+                Product.objects.filter(seller=user)
+                .select_related('category', 'seller')
+                .prefetch_related('items', 'items__configurations__variation_option__variation')
+            )
+        return (
+            Product.objects.filter(is_published=True)
+            .select_related('category', 'seller')
+            .prefetch_related('items', 'items__configurations__variation_option__variation')
+        )
 
     def perform_create(self, serializer):
         # أهم خطوة: ربط المنتج بالبائع اللي عامل login حالياً تلقائياً
@@ -63,28 +70,27 @@ class ProductViewSet(viewsets.ModelViewSet): # تم تغييرها من ReadOnly
 
 # 4. محول التصنيفات (كما هو)
 class ProductCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only product categories."""
     queryset = ProductCategory.objects.order_by('category_name')
     serializer_class = ProductCategorySerializer
 
 
-class IsSellerOrReadOnlyForProductItem(permissions.BasePermission):
-    def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return request.user.is_authenticated and request.user.user_type == 'seller'
-
-    def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return obj.product.seller == request.user
-
-
 class ProductItemViewSet(viewsets.ModelViewSet):
+    """SKU (product item) CRUD.
+
+    Sellers can manage SKUs for their own products.
+    """
+
     serializer_class = ProductItemSerializer
     permission_classes = [IsSellerOrReadOnlyForProductItem]
 
     def get_queryset(self):
-        qs = ProductItem.objects.select_related('product', 'product__seller').all().order_by('id')
+        qs = (
+            ProductItem.objects.select_related('product', 'product__seller', 'product__category')
+            .prefetch_related('configurations__variation_option__variation')
+            .all()
+            .order_by('id')
+        )
 
         product_id = self.request.query_params.get('product')
         if product_id:
