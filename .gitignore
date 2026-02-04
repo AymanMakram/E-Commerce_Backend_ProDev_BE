@@ -1,5 +1,6 @@
 # --- Sensitive Data & Secrets ---
 .env
+.env.template
 .venv
 env/
 venv/

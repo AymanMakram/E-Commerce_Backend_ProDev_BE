@@ -227,6 +227,27 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
 ]
 
+# Allow configuring trusted origins via env (comma-separated).
+_csrf_env = os.getenv('CSRF_TRUSTED_ORIGINS', '').strip()
+if _csrf_env:
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_env.split(',') if o.strip()]
+
+# When running behind a reverse proxy (e.g. Nginx in Docker/EC2)
+if os.getenv('SECURE_PROXY_SSL_HEADER', 'False') == 'True':
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
+
+# --- Celery / Redis ---
+# Default to the docker-compose service name.
+REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')
+
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', REDIS_URL)
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', REDIS_URL)
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+
 # الحفاظ على استمرارية الجلسة
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False # اجعلها False لكي لا يخرج اليوزر كلما أغلق التبويب
 SESSION_SAVE_EVERY_REQUEST = True

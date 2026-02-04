@@ -7,6 +7,9 @@ djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
 drf-spectacular==0.29.0
 drf-yasg==1.21.14
+celery==5.4.0
+redis==5.0.8
+gunicorn==22.0.0
 Faker==32.1.0
 inflection==0.5.1
 jsonschema==4.26.0
