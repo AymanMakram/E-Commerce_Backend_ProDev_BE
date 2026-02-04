@@ -1,7 +1,14 @@
+"""DRF serializers for cart APIs."""
+
 from rest_framework import serializers
 from .models import ShoppingCart, ShoppingCartItem
 
 class ShoppingCartItemSerializer(serializers.ModelSerializer):
+    """Serializer for cart line items.
+
+    Normalizes field names for the frontend (e.g., ``qty`` -> ``quantity``).
+    """
+
     # 1. الأسماء: ربط مباشر لضمان ظهور اسم المنتج من خلال موديل المنتج الأساسي
     product_name = serializers.SerializerMethodField()
     
@@ -84,6 +91,8 @@ class ShoppingCartItemSerializer(serializers.ModelSerializer):
             return 0
 
 class ShoppingCartSerializer(serializers.ModelSerializer):
+    """Serializer for the shopping cart including nested items."""
+
     # ربط عناصر السلة باستخدام السيرياليزر المعدل أعلاه
     items = ShoppingCartItemSerializer(many=True, read_only=True)
     total_price = serializers.SerializerMethodField()

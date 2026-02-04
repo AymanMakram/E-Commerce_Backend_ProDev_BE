@@ -1,3 +1,5 @@
+"""Reusable DRF permissions for the accounts app."""
+
 from rest_framework import permissions
 
 class IsSeller(permissions.BasePermission):

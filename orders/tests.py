@@ -1,3 +1,5 @@
+"""Orders app tests."""
+
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -12,6 +14,8 @@ from products.models import ProductCategory, Product, ProductItem
 
 @override_settings(ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'])
 class OrderCheckoutSmokeTests(TestCase):
+	"""Checkout smoke test covering minimal COD checkout prerequisites."""
+
 	@classmethod
 	def setUpTestData(cls):
 		User = get_user_model()

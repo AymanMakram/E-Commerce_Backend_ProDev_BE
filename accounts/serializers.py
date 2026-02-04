@@ -45,6 +45,11 @@ class AddressSerializer(serializers.ModelSerializer):
 
 # 3. محول التسجيل (النسخة النهائية والمؤمنة بالكامل)
 class RegisterSerializer(serializers.ModelSerializer):
+    """Create a new user (customer or seller) with strong validation.
+
+    Also creates the corresponding profile model based on ``user_type``.
+    """
+
     password = serializers.CharField(write_only=True)
     user_type = serializers.ChoiceField(choices=User.USER_TYPE_CHOICES)
     
@@ -147,6 +152,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 # 4. محول طرق الدفع (User Payment Method)
 class UserPaymentMethodSerializer(serializers.ModelSerializer):
+    """Serializer for user's saved payment methods."""
+
     payment_type_name = serializers.ReadOnlyField(source='payment_type.value')
     payment_status = serializers.SerializerMethodField()
 
@@ -190,6 +197,11 @@ class UserPaymentMethodSerializer(serializers.ModelSerializer):
 
 # 5. محول الملف الشخصي الكامل (User Profile)
 class UserProfileSerializer(serializers.ModelSerializer):
+    """Aggregated profile view.
+
+    Includes addresses, payment methods, and seller metadata when applicable.
+    """
+
     addresses = serializers.SerializerMethodField()
     payment_methods = UserPaymentMethodSerializer(many=True, read_only=True)
     store_name = serializers.SerializerMethodField()

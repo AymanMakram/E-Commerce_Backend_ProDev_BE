@@ -1,3 +1,8 @@
+"""Cart APIs and HTML view.
+
+Supports authenticated carts (user) and guest carts (session_id).
+"""
+
 from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -9,26 +14,40 @@ from .models import ShoppingCart, ShoppingCartItem
 from .serializers import ShoppingCartSerializer, ShoppingCartItemSerializer
 
 class CSRFExemptSessionAuthentication(SessionAuthentication):
+    """Session authentication that skips CSRF checks.
+
+    Used to support anonymous session carts from the browser.
+    """
+
     def enforce_csrf(self, request):
         return None
 
 class CartViewSet(viewsets.ModelViewSet):
+    """Cart API.
+
+    - Authenticated users: cart is stored via ``user``.
+    - Anonymous users: cart is stored via Django session key.
+    """
+
     serializer_class = ShoppingCartSerializer
     permission_classes = [AllowAny]
     authentication_classes = [CSRFExemptSessionAuthentication, JWTAuthentication, BasicAuthentication]
 
     def initial(self, request, *args, **kwargs):
+        """Deny seller accounts from using customer cart endpoints."""
         super().initial(request, *args, **kwargs)
         if request.user.is_authenticated and getattr(request.user, 'user_type', None) == 'seller':
             raise PermissionDenied('Sellers cannot use the customer cart.')
 
     def get_queryset(self):
+        """Return cart queryset scoped to the current user/session."""
         if self.request.user.is_authenticated:
             return ShoppingCart.objects.filter(user=self.request.user)
         else:
             return ShoppingCart.objects.filter(user__isnull=True, session_id=self.request.session.session_key)
 
     def list(self, request, *args, **kwargs):
+        """Return a single cart representation (create if missing)."""
         if request.user.is_authenticated:
             cart, _ = ShoppingCart.objects.get_or_create(user=request.user, defaults={'session_id': None})
             if cart.session_id:
@@ -44,25 +63,31 @@ class CartViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 def cart_detail(request):
+    """Render the cart HTML page."""
     return render(request, 'cart/cart_detail.html')
 
 class CartItemViewSet(viewsets.ModelViewSet):
+    """Cart item API for adding/updating/removing items from the cart."""
+
     serializer_class = ShoppingCartItemSerializer
     permission_classes = [AllowAny]
     authentication_classes = [CSRFExemptSessionAuthentication, JWTAuthentication, BasicAuthentication]
 
     def initial(self, request, *args, **kwargs):
+        """Deny seller accounts from using customer cart endpoints."""
         super().initial(request, *args, **kwargs)
         if request.user.is_authenticated and getattr(request.user, 'user_type', None) == 'seller':
             raise PermissionDenied('Sellers cannot use the customer cart.')
 
     def get_queryset(self):
+        """Return cart items scoped to the current user/session."""
         if self.request.user.is_authenticated:
             return ShoppingCartItem.objects.filter(cart__user=self.request.user)
         else:
             return ShoppingCartItem.objects.filter(cart__user__isnull=True, cart__session_id=self.request.session.session_key)
 
     def create(self, request, *args, **kwargs):
+        """Add an item to the cart, merging quantity if it already exists."""
         try:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -99,7 +124,9 @@ class CartItemViewSet(viewsets.ModelViewSet):
             return Response({'error': str(e)}, status=400)
 
     def perform_update(self, serializer):
+        """Persist item updates (e.g., quantity changes)."""
         serializer.save()
 
     def perform_destroy(self, instance):
+        """Delete an item from the cart."""
         instance.delete()

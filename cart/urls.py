@@ -1,3 +1,5 @@
+"""URL routes for cart APIs and the cart HTML page."""
+
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import CartViewSet, CartItemViewSet, cart_detail

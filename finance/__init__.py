@@ -1,0 +1,2 @@
+"""Finance app package."""
+

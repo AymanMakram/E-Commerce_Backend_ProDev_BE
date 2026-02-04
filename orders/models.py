@@ -1,9 +1,13 @@
+"""Database models for orders and order lines."""
+
 from django.db import models
 from django.conf import settings
 from products.models import ProductItem
 from accounts.models import Address, UserPaymentMethod
 
 class OrderStatus(models.Model):
+    """Order lifecycle status (e.g., Pending, Shipped, Delivered)."""
+
     status = models.CharField(max_length=50, unique=True)
     
     class Meta:
@@ -13,6 +17,8 @@ class OrderStatus(models.Model):
         return self.status
 
 class ShopOrder(models.Model):
+    """Represents a customer's order and fulfillment tracking."""
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     order_date = models.DateTimeField(auto_now_add=True)
     payment_method = models.ForeignKey(UserPaymentMethod, on_delete=models.SET_NULL, null=True)
@@ -33,6 +39,8 @@ class ShopOrder(models.Model):
         return f"Order #{self.id} - {self.user.username}"
 
 class OrderLine(models.Model):
+    """Line item inside an order."""
+
     product_item = models.ForeignKey(ProductItem, on_delete=models.CASCADE)
     order = models.ForeignKey(ShopOrder, on_delete=models.CASCADE, related_name='lines')
     qty = models.IntegerField(default=1)

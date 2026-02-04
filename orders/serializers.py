@@ -1,3 +1,5 @@
+"""DRF serializers for orders APIs."""
+
 from rest_framework import serializers
 from .models import ShopOrder, OrderLine, OrderStatus
 from finance.models import Transaction

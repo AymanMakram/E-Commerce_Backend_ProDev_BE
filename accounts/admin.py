@@ -1,3 +1,5 @@
+"""Django admin configuration for accounts models."""
+
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import (
@@ -12,25 +14,35 @@ if admin.site.is_registered(User):
 
 # 2. إعدادات الـ Inlines (لعرض البيانات المرتبطة في صفحة المستخدم)
 class CustomerProfileInline(admin.StackedInline):
+    """Inline editor for customer profile information."""
+
     model = CustomerProfile
     can_delete = False
     verbose_name_plural = 'Customer Profile Info'
 
 class SellerProfileInline(admin.StackedInline):
+    """Inline editor for seller profile information."""
+
     model = SellerProfile
     can_delete = False
     verbose_name_plural = 'Seller Profile Info'
 
 class UserAddressInline(admin.TabularInline):
+    """Inline editor for user addresses."""
+
     model = UserAddress
     extra = 1 # يسمح بإضافة عنوان جديد مباشرة من صفحة المستخدم
 
 class UserPaymentMethodInline(admin.TabularInline):
+    """Inline editor for user payment methods."""
+
     model = UserPaymentMethod
     extra = 1
 
 # 3. تخصيص لوحة تحكم المستخدم
 class CustomUserAdmin(UserAdmin):
+    """Customizes the admin UI for the custom ``User`` model."""
+
     model = User
     list_display = ['username', 'email', 'user_type', 'is_staff', 'phone_number']
     
@@ -40,6 +52,7 @@ class CustomUserAdmin(UserAdmin):
 
     # هذا الجزء هو المسؤول عن إظهار/إخفاء الحقول بناءً على نوع المستخدم
     def get_inline_instances(self, request, obj=None):
+        """Show different inline sections depending on ``user_type``."""
         if not obj:
             return []
         

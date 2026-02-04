@@ -1,6 +1,10 @@
+"""Invoices app configuration and signal registration."""
+
 from django.apps import AppConfig
 
 class InvoicesConfig(AppConfig):
+    """Django app config for invoices; registers signal handlers."""
+
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'invoices'
 

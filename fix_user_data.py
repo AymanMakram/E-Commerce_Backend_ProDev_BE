@@ -1,3 +1,9 @@
+"""Data-fix helper script.
+
+This script populates sample address/phone data for demo users (e.g. customer_1..customer_10).
+It is intended for local development only.
+"""
+
 import os
 import django
 import random
@@ -12,6 +18,11 @@ from accounts.models import Address, UserAddress, Country
 User = get_user_model()
 
 def fix_specific_data():
+    """Populate demo customers with an address and a phone number.
+
+    Intended for local development/demo databases only.
+    """
+
     # 2. التأكد من وجود دولة مصر
     egypt, _ = Country.objects.get_or_create(country_name='Egypt')
     

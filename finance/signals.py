@@ -1,3 +1,5 @@
+"""Signals for finance side-effects (e.g., stock adjustments)."""
+
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.db import transaction
@@ -6,6 +8,7 @@ from .models import Transaction
 # 1. حفظ الحالة القديمة للمقارنة (مهم جداً لمنع التكرار)
 @receiver(pre_save, sender=Transaction)
 def capture_old_data(sender, instance, **kwargs):
+    """Capture previous payment/order status to make post-save actions idempotent."""
     try:
         if instance.pk:
             old_obj = Transaction.objects.get(pk=instance.pk)
@@ -22,6 +25,12 @@ def capture_old_data(sender, instance, **kwargs):
 # 2. تنفيذ الخصم أو الإرجاع بناءً على الشرط المزدوج
 @receiver(post_save, sender=Transaction)
 def handle_stock_double_check(sender, instance, **kwargs):
+    """Adjust inventory exactly once when payment+delivery conditions change.
+
+    Decrements stock when a transaction becomes (Success + Delivered), and restores stock
+    if it transitions away from that fully-confirmed state.
+    """
+
     order = instance.order
     # الحالات الجديدة بعد الحفظ
     new_pay_status = instance.payment_status.status if instance.payment_status else None

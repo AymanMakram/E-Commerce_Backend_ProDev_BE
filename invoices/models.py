@@ -1,6 +1,10 @@
+"""Database models for invoices."""
+
 from django.db import models
 
 class Invoice(models.Model):
+    """Invoice generated for an order."""
+
     # الربط مع الموديل الصح 'ShopOrder' باستخدام String عشان نتفادى الـ ImportError
     order = models.OneToOneField(
         'orders.ShopOrder', 

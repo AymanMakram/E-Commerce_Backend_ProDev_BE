@@ -1,3 +1,5 @@
+"""Django admin configuration for invoices."""
+
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -5,6 +7,8 @@ from .models import Invoice
 
 @admin.register(Invoice)
 class InvoiceAdmin(admin.ModelAdmin):
+    """Admin configuration for invoices."""
+
     list_display = ('invoice_number', 'get_order_id', 'get_customer', 'get_total', 'issued_at', 'print_invoice_button')
     list_filter = ('issued_at',)
     search_fields = ('invoice_number', 'order__id', 'order__user__username')

@@ -1,3 +1,8 @@
+"""Orders API views.
+
+Includes checkout creation, seller status updates, and list endpoints.
+"""
+
 from rest_framework import viewsets, permissions, filters
 from rest_framework.response import Response
 from .models import ShopOrder
@@ -8,6 +13,12 @@ from django.utils.dateparse import parse_date
 from django.utils import timezone
 
 class OrderViewSet(viewsets.ModelViewSet):
+    """Order API endpoints for customers and sellers.
+
+    Customers can create and list their own orders.
+    Sellers can list orders that include their SKUs and update statuses.
+    """
+
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = ShopOrderSerializer
     pagination_class = StandardResultsSetPagination

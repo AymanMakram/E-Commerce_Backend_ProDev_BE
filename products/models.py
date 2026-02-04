@@ -1,8 +1,12 @@
+"""Database models for the product catalog and variations."""
+
 from django.db import models
 from django.conf import settings # لاستدعاء موديل المستخدم بأمان
 
 # 1. جداول التصنيفات
 class ProductCategory(models.Model):
+    """Product category with optional parent-child hierarchy."""
+
     parent_category = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='subcategories')
     category_name = models.CharField(max_length=255)
 
@@ -13,6 +17,11 @@ class ProductCategory(models.Model):
 
 # 2. جدول المنتجات الأساسي (تم إضافة حقل الـ seller)
 class Product(models.Model):
+    """Top-level product entity owned by a seller.
+
+    A Product can have multiple SKUs via :class:`ProductItem`.
+    """
+
     # الربط مع البائع - تأكد أن التاجر فقط هو من يظهر في الخيارات
     seller = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
@@ -34,6 +43,8 @@ class Product(models.Model):
 
 # 3. جداول الاختلافات (Variations)
 class Variation(models.Model):
+    """Variation dimension for a category (e.g., Size, Color)."""
+
     category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
 
@@ -41,6 +52,8 @@ class Variation(models.Model):
         return f"{self.name} ({self.category.category_name})"
 
 class VariationOption(models.Model):
+    """Concrete option for a variation (e.g., Red, XL)."""
+
     variation = models.ForeignKey(Variation, on_delete=models.CASCADE, related_name='options')
     value = models.CharField(max_length=255)
 
@@ -49,6 +62,8 @@ class VariationOption(models.Model):
 
 # 4. تفاصيل المنتج (Price, Stock, SKU)
 class ProductItem(models.Model):
+    """Specific purchasable SKU for a product."""
+
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='items')
     sku = models.CharField(max_length=255, unique=True)
     qty_in_stock = models.IntegerField(default=0)
@@ -60,5 +75,7 @@ class ProductItem(models.Model):
 
 # 5. ربط الاختيارات بالقطع (Configuration)
 class ProductConfiguration(models.Model):
+    """Assigns a variation option to a specific SKU (ProductItem)."""
+
     product_item = models.ForeignKey(ProductItem, on_delete=models.CASCADE, related_name='configurations')
     variation_option = models.ForeignKey(VariationOption, on_delete=models.CASCADE)
