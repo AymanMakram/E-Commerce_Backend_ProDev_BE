@@ -1,4 +1,4 @@
-# Velo Store (Django REST + Vanilla JS)
+# Velo Store (Django 5.2 + DRF + Vanilla JS)
 
 Velo Store is a modern e-commerce platform for the Egyptian market (Amazon/Jumia style): a clean, RTL-first shopping experience for customers and an operational dashboard for sellers. The system is built as a **decoupled** backend (Django + DRF) with a **Vanilla JavaScript, template-hosted SPA-like frontend**.
 
