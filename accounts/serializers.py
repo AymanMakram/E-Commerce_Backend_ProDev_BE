@@ -1,26 +1,41 @@
+"""Serializers for the accounts app.
+
+Includes:
+- Registration with strong validation
+- Profile aggregation (addresses + payment methods)
+- Reference data (countries, payment types)
+"""
+
 import re
-from rest_framework import serializers
-from .models import (
-    User, Address, UserAddress, Country, 
-    UserPaymentMethod, PaymentType, SellerProfile, CustomerProfile
-)
-# 6. محول أنواع الدفع (PaymentType)
-class PaymentTypeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PaymentType
-        fields = ['id', 'value']
+
 from django.contrib.auth import get_user_model
+from rest_framework import serializers
+
+from .models import Address, Country, CustomerProfile, PaymentType, SellerProfile, UserAddress, UserPaymentMethod
+
 
 User = get_user_model()
 
+
+class PaymentTypeSerializer(serializers.ModelSerializer):
+    """Payment type reference values."""
+
+    class Meta:
+        model = PaymentType
+        fields = ['id', 'value']
+
 # 1. محول الدول (Country)
 class CountrySerializer(serializers.ModelSerializer):
+    """Country reference values."""
+
     class Meta:
         model = Country
         fields = ['id', 'country_name']
 
 # 2. محول العناوين (Address)
 class AddressSerializer(serializers.ModelSerializer):
+    """Address payload used for create/update."""
+
     class Meta:
         model = Address
         fields = [

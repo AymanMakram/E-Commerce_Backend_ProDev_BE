@@ -1,34 +1,38 @@
-from rest_framework.decorators import api_view, action
-from rest_framework.response import Response
-from .models import PaymentType, Country, User, Address, UserAddress, UserPaymentMethod
-from .serializers import PaymentTypeSerializer, CountrySerializer, UserProfileSerializer, AddressSerializer, RegisterSerializer, UserPaymentMethodSerializer
+"""Accounts app views.
 
-# Endpoint to list all payment types
-@api_view(['GET'])
-def payment_type_list(request):
-    types = PaymentType.objects.all()
-    serializer = PaymentTypeSerializer(types, many=True)
-    return Response(serializer.data)
-# Endpoint to list all countries
-@api_view(['GET'])
-def country_list(request):
-    countries = Country.objects.all()
-    serializer = CountrySerializer(countries, many=True)
-    return Response(serializer.data)
-from django.shortcuts import render # إضافة render لعرض الصفحات
-from rest_framework import viewsets, status, generics
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.exceptions import PermissionDenied
-from .models import User, Address, UserAddress, UserPaymentMethod, SellerProfile
-from .serializers import UserProfileSerializer, AddressSerializer, RegisterSerializer, UserPaymentMethodSerializer
+Contains:
+- Lightweight HTML entry pages (login/register)
+- Auth-related API endpoints (register)
+- Customer profile APIs (addresses & payment methods)
+- Reference data APIs (countries, payment types)
+
+Kept intentionally simple and DRF-native.
+"""
 
 from django.contrib.auth import authenticate, login
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
+
+from rest_framework import generics, status, viewsets
+from rest_framework.decorators import action, api_view
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+
+from .models import Country, PaymentType, SellerProfile, UserAddress, UserPaymentMethod
+from .serializers import (
+    AddressSerializer,
+    CountrySerializer,
+    PaymentTypeSerializer,
+    RegisterSerializer,
+    UserPaymentMethodSerializer,
+    UserProfileSerializer,
+)
 
 def login_page(request):
-    """عرض صفحة تسجيل الدخول مع دعم تسجيل الدخول بجلسة Django"""
+    """Render login page (HTML) and support Django session login.
+
+    Note: API authentication is handled via JWT under /api/accounts/login/.
+    """
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -45,27 +49,47 @@ def login_page(request):
     return render(request, 'auth/login.html')
 
 def register_page(request):
+    """Render register page (HTML)."""
     return render(request, 'auth/register.html')
+
+
+@api_view(['GET'])
+def payment_type_list(request):
+    """List payment types used by profile/payment-method forms."""
+    types = PaymentType.objects.all().order_by('id')
+    return Response(PaymentTypeSerializer(types, many=True).data)
+
+
+@api_view(['GET'])
+def country_list(request):
+    """List supported countries for address forms."""
+    countries = Country.objects.all().order_by('id')
+    return Response(CountrySerializer(countries, many=True).data)
 # 1. كلاس التسجيل (الذي كان يسبب الخطأ)
 class RegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
+    """Public registration endpoint."""
+    queryset = RegisterSerializer.Meta.model.objects.all()
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
 
 # 2. كلاس إدارة البروفايل والعناوين والدفع
 class UserProfileViewSet(viewsets.GenericViewSet):
-    """
-    إدارة شاملة للمستخدم: الملف الشخصي، العناوين، وطرق الدفع
+    """Authenticated profile management.
+
+    - Customers: manage addresses and payment methods.
+    - Sellers: can update seller profile fields (store_name, tax_number) through `me`.
     """
     permission_classes = [IsAuthenticated]
     serializer_class = UserProfileSerializer
 
     def _deny_seller_customer_profile(self, request):
+        """Block customer-only features for seller users."""
         if getattr(request.user, 'user_type', None) == 'seller':
             raise PermissionDenied('Customer profile features are not available for sellers.')
 
     @action(detail=False, methods=['get', 'put'])
     def me(self, request):
+        """Get or update the authenticated user's profile."""
         user = request.user
         if request.method == 'GET':
             serializer = self.get_serializer(user)
@@ -94,19 +118,20 @@ class UserProfileViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['post'], url_path='add-address')
     def add_address(self, request):
+        """Customer-only: add a new address and optionally set it as default."""
         self._deny_seller_customer_profile(request)
         serializer = AddressSerializer(data=request.data)
-        if serializer.is_valid():
-            address = serializer.save()
-            is_default = bool(request.data.get('is_default', False))
-            if is_default:
-                UserAddress.objects.filter(user=request.user).update(is_default=False)
-            # If it's the first address, make it default automatically.
-            if not UserAddress.objects.filter(user=request.user).exists():
-                is_default = True
-            UserAddress.objects.create(user=request.user, address=address, is_default=is_default)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+
+        address = serializer.save()
+        is_default = bool(request.data.get('is_default', False))
+        if is_default:
+            UserAddress.objects.filter(user=request.user).update(is_default=False)
+        # If it's the first address, make it default automatically.
+        if not UserAddress.objects.filter(user=request.user).exists():
+            is_default = True
+        UserAddress.objects.create(user=request.user, address=address, is_default=is_default)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['put', 'patch', 'delete'], url_path='addresses/(?P<address_id>[^/.]+)')
     def address_detail(self, request, address_id=None):
@@ -134,6 +159,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['patch'], url_path='addresses/(?P<address_id>[^/.]+)/set-default')
     def set_default_address(self, request, address_id=None):
+        """Customer-only: set a specific address as default."""
         self._deny_seller_customer_profile(request)
         ua = UserAddress.objects.filter(user=request.user, address_id=address_id).first()
         if not ua:
@@ -146,6 +172,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['get', 'post'], url_path='payment-methods')
     def payment_methods(self, request):
+        """Customer-only: list or create payment methods."""
         self._deny_seller_customer_profile(request)
         if request.method == 'GET':
             payments = UserPaymentMethod.objects.filter(user=request.user)
@@ -161,6 +188,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['put', 'patch', 'delete'], url_path='payment-methods/(?P<payment_id>[^/.]+)')
     def payment_method_detail(self, request, payment_id=None):
+        """Customer-only: update or delete a payment method owned by the user."""
         self._deny_seller_customer_profile(request)
         payment = UserPaymentMethod.objects.filter(user=request.user, id=payment_id).first()
         if not payment:
@@ -183,6 +211,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['patch'], url_path='payment-methods/(?P<payment_id>[^/.]+)/set-default')
     def set_default_payment_method(self, request, payment_id=None):
+        """Customer-only: set a specific payment method as default."""
         self._deny_seller_customer_profile(request)
         payment = UserPaymentMethod.objects.filter(user=request.user, id=payment_id).first()
         if not payment:
