@@ -21,6 +21,12 @@
     alert(message);
   }
 
+  function redirectToLogin() {
+    const next = `${window.location.pathname || ''}${window.location.search || ''}`;
+    const safeNext = (next && next.startsWith('/')) ? next : '/products/';
+    window.location.replace(`/api/accounts/login-view/?next=${encodeURIComponent(safeNext)}`);
+  }
+
   function escapeHtml(str) {
     return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
@@ -209,7 +215,7 @@
               <button id="product-add" class="btn btn-info rounded-pill flex-grow-1">
                 <i class="fa-solid fa-cart-plus ms-2"></i> أضف للسلة
               </button>
-              <a href="/cart/" class="btn btn-outline-info rounded-pill">السلة</a>
+              <a id="product-cart-link" href="/cart/" class="btn btn-outline-info rounded-pill">السلة</a>
             </div>
           </div>
         </div>
@@ -218,6 +224,24 @@
 
     content.classList.remove('d-none');
     if (skeleton) skeleton.classList.add('d-none');
+
+    // Guest UX: make "Add to cart" clearly require login.
+    const token = (() => { try { return localStorage.getItem('access_token'); } catch (_) { return null; } })();
+    const addBtnGuest = document.getElementById('product-add');
+    if (addBtnGuest && !token) {
+      addBtnGuest.classList.remove('btn-info');
+      addBtnGuest.classList.add('btn-outline-secondary');
+      addBtnGuest.title = 'سجّل الدخول لإضافة للسلة';
+      addBtnGuest.setAttribute('aria-label', addBtnGuest.title);
+      addBtnGuest.innerHTML = '<i class="fa fa-lock ms-2"></i> سجّل الدخول للإضافة';
+    }
+
+    const cartLink = document.getElementById('product-cart-link');
+    if (cartLink && !token) {
+      cartLink.href = '/api/accounts/login-view/?next=%2Fcart%2F';
+      cartLink.title = 'سجّل الدخول لعرض السلة';
+      cartLink.setAttribute('aria-label', cartLink.title);
+    }
 
     // Bind thumbnails
     document.querySelectorAll('[data-thumb]')?.forEach((btn) => {
@@ -260,6 +284,12 @@
     const addBtn = document.getElementById('product-add');
     if (addBtn) {
       addBtn.addEventListener('click', async () => {
+        const token = (() => { try { return localStorage.getItem('access_token'); } catch (_) { return null; } })();
+        if (!token) {
+          showToast('سجّل الدخول لإضافة المنتجات إلى السلة.', 'info');
+          redirectToLogin();
+          return;
+        }
         const item = state.selectedItem;
         if (!item?.id) return;
 

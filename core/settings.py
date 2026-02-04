@@ -163,6 +163,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 AUTH_USER_MODEL = 'accounts.User'
 
+# Email (password reset): in development, print emails to console.
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@velo.local')
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/

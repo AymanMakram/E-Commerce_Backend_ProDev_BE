@@ -119,6 +119,8 @@
       const btn = document.getElementById('logout-btn');
       if (btn) btn.addEventListener('click', handleLogout);
     } else {
+      // For guests: keep cart link visible but route to login with next=/cart/
+      if (cartLink) cartLink.setAttribute('href', `${getLoginHrefWithNext().split('?')[0]}?next=${encodeURIComponent('/cart/')}`);
       authSection.innerHTML = `
         <a href="${getLoginHrefWithNext()}" class="btn btn-sm btn-info text-white rounded-pill px-4">تسجيل دخول</a>
       `;

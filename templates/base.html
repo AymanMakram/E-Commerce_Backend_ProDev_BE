@@ -70,6 +70,8 @@
                 try {
                     const t = localStorage.getItem('user_type');
                     const token = localStorage.getItem('access_token');
+                    // Guests can browse products; do not force login by hitting cart APIs.
+                    if (!token) return;
                     if (token && t === 'seller') return;
                 } catch (_) {
                     // ignore

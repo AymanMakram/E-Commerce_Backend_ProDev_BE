@@ -70,6 +70,8 @@
   }
 
   function productCard(product) {
+    const token = (() => { try { return localStorage.getItem('access_token'); } catch (_) { return null; } })();
+    const isAuthed = !!token;
     const firstItem = product?.items?.length ? product.items[0] : null;
     if (!firstItem) return '';
 
@@ -81,6 +83,10 @@
 
     const fallbackImg = '/static/images/no-image.svg';
     const detailUrl = `/products/${product.id}/`;
+
+    const btnTitle = isAuthed ? 'أضف للسلة' : 'سجّل الدخول لإضافة للسلة';
+    const btnClass = isAuthed ? 'btn-outline-info' : 'btn-outline-secondary';
+    const btnIcon = isAuthed ? "fa fa-plus" : "fa fa-lock";
 
     return `
       <div class="col-md-4 col-lg-3 mb-4">
@@ -96,8 +102,8 @@
             </a>
             <div class="d-flex justify-content-between align-items-center">
               <span style="color: #00BCD4; font-weight: 800;">${price.toFixed(2)} ج.م</span>
-              <button class="btn btn-outline-info btn-sm rounded-circle ms-2" title="أضف للسلة" style="width:38px;height:38px;display:flex;align-items:center;justify-content:center;" onclick="addToCart('${productItemId}', '${String(product.name).replace(/'/g, "\\'")}', '${price.toFixed(2)}', '${img.replace(/'/g, "\\'")}')">
-                <i class='fa fa-plus'></i>
+              <button class="btn ${btnClass} btn-sm rounded-circle ms-2" title="${btnTitle}" style="width:38px;height:38px;display:flex;align-items:center;justify-content:center;" onclick="addToCart('${productItemId}', '${String(product.name).replace(/'/g, "\\'")}', '${price.toFixed(2)}', '${img.replace(/'/g, "\\'")}')">
+                <i class='${btnIcon}'></i>
               </button>
             </div>
           </div>
@@ -183,6 +189,13 @@
 
   // Keep original name
   window.addToCart = async function addToCart(productItemId, name) {
+    const token = (() => { try { return localStorage.getItem('access_token'); } catch (_) { return null; } })();
+    if (!token) {
+      showToast('سجّل الدخول لإضافة المنتجات إلى السلة.', 'info');
+      const next = `${window.location.pathname || ''}${window.location.search || ''}`;
+      window.location.replace(`/api/accounts/login-view/?next=${encodeURIComponent(next.startsWith('/') ? next : '/products/')}`);
+      return;
+    }
     try {
       const res = await window.request('/api/cart/cart-items/', {
         method: 'POST',
@@ -216,11 +229,7 @@
   }
 
   function initAuthGate() {
-    const token = (() => { try { return localStorage.getItem('access_token'); } catch (_) { return null; } })();
-    if (!token) {
-      window.location.replace('/api/accounts/login-view/');
-      return false;
-    }
+    // Guest browsing is allowed.
     return true;
   }
 
@@ -228,7 +237,9 @@
     if (!grid) return;
     if (!initAuthGate()) return;
 
-    if (typeof window.bindCartBadge === 'function') window.bindCartBadge('cart-count');
+    // Only bind cart badge if logged in (otherwise cart API calls can redirect to login).
+    const token = (() => { try { return localStorage.getItem('access_token'); } catch (_) { return null; } })();
+    if (token && typeof window.bindCartBadge === 'function') window.bindCartBadge('cart-count');
 
     loadCategories();
     loadProducts('/api/products/');
