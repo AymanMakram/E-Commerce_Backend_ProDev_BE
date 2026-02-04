@@ -12,12 +12,18 @@ WORKDIR /build
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
+        python3-dev \
         libpq-dev \
+        pkg-config \
+        libjpeg62-turbo-dev \
+        zlib1g-dev \
+        libwebp-dev \
+        libfreetype6-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
 RUN python -m pip install --upgrade pip \
-    && pip wheel --wheel-dir /wheels -r requirements.txt
+    && pip wheel --wheel-dir /wheels --prefer-binary -r requirements.txt
 
 
 FROM python:3.11-slim AS runtime
