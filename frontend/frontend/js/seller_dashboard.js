@@ -10,6 +10,13 @@
   const loader = byId('loader');
   const paginationEl = byId('seller-pagination');
 
+  const filterSearch = byId('seller-product-search');
+  const filterCategory = byId('seller-product-filter-category');
+  const filterReset = byId('seller-product-filter-reset');
+  const productsMeta = byId('seller-products-meta');
+
+  let filterDebounceId = null;
+
   const addName = byId('product-name');
   const addCategory = byId('product-category');
   const addDescription = byId('product-description');
@@ -34,11 +41,33 @@
   const itemImage = byId('product-item-image');
   const itemSaveBtn = byId('save-item-btn');
 
+  const skuOptionsModalEl = byId('skuOptionsModal');
+  const skuOptionsItemId = byId('sku-options-item-id');
+  const skuOptionsProductId = byId('sku-options-product-id');
+  const skuOptionsContainer = byId('sku-options-container');
+  const skuOptionsAlert = byId('sku-options-alert');
+  const skuOptionsSaveBtn = byId('sku-options-save');
+
+  const variationsCache = new Map(); // categoryId -> [{id,name,category,..., options:[{id,value,variation_name}]}]
+
   const DEFAULT_IMAGE = '/static/images/no-image.svg';
 
   function showToast(message, type = 'info') {
     if (typeof window.showToast === 'function') return window.showToast(message, type);
     alert(message);
+  }
+
+  function setSkuOptionsAlert(message, type = 'info') {
+    if (!skuOptionsAlert) return;
+    if (!message) {
+      skuOptionsAlert.className = 'alert d-none mt-3 mb-0';
+      skuOptionsAlert.textContent = '';
+      skuOptionsAlert.classList.add('d-none');
+      return;
+    }
+    skuOptionsAlert.className = `alert alert-${type} mt-3 mb-0`;
+    skuOptionsAlert.textContent = message;
+    skuOptionsAlert.classList.remove('d-none');
   }
 
   async function readJsonSafe(res) {
@@ -119,7 +148,37 @@
     nextBtn?.addEventListener('click', () => loadProducts(next));
   }
 
+  function setProductsMeta(text) {
+    if (!productsMeta) return;
+    productsMeta.textContent = text || '';
+  }
+
+  function buildProductsUrl(base = '/api/products/') {
+    try {
+      const url = new URL(base, window.location.origin);
+      const q = String(filterSearch?.value || '').trim();
+      const category = String(filterCategory?.value || '').trim();
+
+      if (q) url.searchParams.set('search', q);
+      else url.searchParams.delete('search');
+
+      if (category) url.searchParams.set('category', category);
+      else url.searchParams.delete('category');
+
+      return url.pathname + url.search;
+    } catch (_) {
+      return base;
+    }
+  }
+
   function productCardHtml(p) {
+        const isPublished = (p && typeof p.is_published !== 'undefined') ? Boolean(p.is_published) : true;
+        const pubBadge = isPublished
+          ? '<span class="badge rounded-pill bg-success">منشور</span>'
+          : '<span class="badge rounded-pill bg-secondary">غير منشور</span>';
+        const pubBtn = isPublished
+          ? `<button class="btn btn-sm btn-outline-secondary rounded-pill" data-action="product-unpublish" data-id="${p.id}">إخفاء</button>`
+          : `<button class="btn btn-sm btn-outline-info rounded-pill" data-action="product-publish" data-id="${p.id}" style="border-color:#00BCD4;color:#00BCD4;">نشر</button>`;
     const img = normalizeImgUrl(p.product_image);
     const items = Array.isArray(p.items) ? p.items : [];
 
@@ -147,6 +206,7 @@
                     <td>${Number(it.qty_in_stock ?? 0)}</td>
                     <td>${it.price ?? ''}</td>
                     <td class="text-end">
+                      <button class="btn btn-sm btn-outline-info rounded-pill" data-action="item-options" data-item-id="${it.id}" data-product-id="${p.id}" style="border-color:#00BCD4;color:#00BCD4;">الخيارات</button>
                       <button class="btn btn-sm btn-outline-secondary rounded-pill" data-action="item-edit" data-item-id="${it.id}" data-product-id="${p.id}">تعديل</button>
                       <button class="btn btn-sm btn-outline-danger rounded-pill" data-action="item-delete" data-item-id="${it.id}">حذف</button>
                     </td>
@@ -175,9 +235,11 @@
               <div>
                 <h5 class="card-title mb-1" style="color:#0f172a;">${p.name || ''}</h5>
                 <div class="text-muted small">${p.category_name || ''}</div>
+                <div class="mt-2">${pubBadge}</div>
               </div>
               <div class="d-flex flex-column gap-2">
                 <button class="btn btn-sm btn-outline-secondary rounded-pill" data-action="product-edit" data-id="${p.id}">تعديل</button>
+                ${pubBtn}
                 <button class="btn btn-sm btn-outline-danger rounded-pill" data-action="product-delete" data-id="${p.id}">حذف</button>
               </div>
             </div>
@@ -191,6 +253,21 @@
 
   function bindProductActions(products) {
     if (!productsList) return;
+
+    async function togglePublish(productId, nextState) {
+      const res = await window.request(`/api/products/${productId}/`, {
+        method: 'PATCH',
+        body: JSON.stringify({ is_published: !!nextState }),
+      });
+      if (!res) return;
+      if (res.ok) {
+        showToast(nextState ? 'تم نشر المنتج.' : 'تم إخفاء المنتج.', 'success');
+        await loadProducts('/api/products/');
+      } else {
+        const err = await readJsonSafe(res);
+        showToast((err && (err.detail || err.message)) || 'فشل تحديث حالة النشر.', 'danger');
+      }
+    }
 
     productsList.querySelectorAll('[data-action="product-edit"]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -218,6 +295,22 @@
       });
     });
 
+    productsList.querySelectorAll('[data-action="product-publish"]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        if (!id) return;
+        await togglePublish(id, true);
+      });
+    });
+
+    productsList.querySelectorAll('[data-action="product-unpublish"]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        if (!id) return;
+        await togglePublish(id, false);
+      });
+    });
+
     productsList.querySelectorAll('[data-action="item-add"]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const productId = btn.getAttribute('data-product-id');
@@ -232,6 +325,17 @@
         const product = (products || []).find((x) => String(x.id) === String(productId));
         const item = product?.items?.find((it) => String(it.id) === String(itemIdVal));
         if (item) openItemModalForEdit(productId, item);
+      });
+    });
+
+    productsList.querySelectorAll('[data-action="item-options"]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const productId = btn.getAttribute('data-product-id');
+        const itemIdVal = btn.getAttribute('data-item-id');
+        const product = (products || []).find((x) => String(x.id) === String(productId));
+        const item = product?.items?.find((it) => String(it.id) === String(itemIdVal));
+        if (!product || !item) return;
+        await openSkuOptionsModal(product, item);
       });
     });
 
@@ -251,6 +355,126 @@
           showToast((err && (err.detail || err.message)) || 'فشل الحذف.', 'danger');
         }
       });
+    });
+  }
+
+  async function fetchVariationsWithOptions(categoryId) {
+    const key = String(categoryId || '');
+    if (!key) return [];
+    if (variationsCache.has(key)) return variationsCache.get(key);
+
+    const res = await window.request(`/api/variations/?category=${encodeURIComponent(key)}`);
+    if (!res) return [];
+    const vars = await readJsonSafe(res);
+    const list = Array.isArray(vars?.results) ? vars.results : (Array.isArray(vars) ? vars : []);
+
+    const enriched = [];
+    for (const v of list) {
+      const optRes = await window.request(`/api/variations/${v.id}/options/`);
+      const opts = optRes ? (await readJsonSafe(optRes)) : [];
+      enriched.push({ ...v, options: Array.isArray(opts) ? opts : [] });
+    }
+
+    variationsCache.set(key, enriched);
+    return enriched;
+  }
+
+  function renderSkuOptionsForm(variations, currentOptionsByVariationName) {
+    if (!skuOptionsContainer) return;
+    if (!Array.isArray(variations) || !variations.length) {
+      skuOptionsContainer.innerHTML = '<div class="text-muted">لا توجد اختلافات مرتبطة بهذه الفئة حالياً.</div>';
+      return;
+    }
+
+    skuOptionsContainer.innerHTML = `
+      <div class="row g-3">
+        ${variations
+          .map((v) => {
+            const varName = String(v.name || 'Variation');
+            const opts = Array.isArray(v.options) ? v.options : [];
+            const selectedId = currentOptionsByVariationName?.get(varName) || '';
+            return `
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-bold">${varName}</label>
+                <select class="form-select" data-sku-var="${varName}">
+                  <option value="">—</option>
+                  ${opts
+                    .map((o) => {
+                      const sel = String(o.id) === String(selectedId) ? 'selected' : '';
+                      return `<option value="${o.id}" ${sel}>${o.value}</option>`;
+                    })
+                    .join('')}
+                </select>
+              </div>
+            `;
+          })
+          .join('')}
+      </div>
+    `;
+  }
+
+  async function openSkuOptionsModal(product, item) {
+    if (!skuOptionsModalEl) return;
+    setSkuOptionsAlert('', 'info');
+
+    if (skuOptionsItemId) skuOptionsItemId.value = String(item.id || '');
+    if (skuOptionsProductId) skuOptionsProductId.value = String(product.id || '');
+
+    const current = new Map();
+    (item?.options || []).forEach((o) => {
+      if (!o?.variation_name) return;
+      current.set(String(o.variation_name), String(o.id));
+    });
+
+    if (skuOptionsContainer) skuOptionsContainer.innerHTML = '<div class="text-muted">جاري تحميل الاختلافات...</div>';
+
+    const variations = await fetchVariationsWithOptions(product.category);
+    renderSkuOptionsForm(variations, current);
+
+    const modal = (window.bootstrap && window.bootstrap.Modal) ? new window.bootstrap.Modal(skuOptionsModalEl) : null;
+    modal?.show();
+  }
+
+  function bindSkuOptionsSave() {
+    if (!skuOptionsSaveBtn || typeof window.request !== 'function') return;
+    skuOptionsSaveBtn.addEventListener('click', async () => {
+      const itemIdVal = String(skuOptionsItemId?.value || '').trim();
+      if (!itemIdVal) return;
+
+      setSkuOptionsAlert('', 'info');
+      skuOptionsSaveBtn.disabled = true;
+      const prev = skuOptionsSaveBtn.innerHTML;
+      skuOptionsSaveBtn.innerHTML = `<span class="spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span> حفظ`;
+
+      try {
+        const selected = [];
+        skuOptionsContainer?.querySelectorAll('select[data-sku-var]')?.forEach((sel) => {
+          const v = String(sel.value || '').trim();
+          if (v) selected.push(Number(v));
+        });
+
+        const res = await window.request(`/api/product-items/${itemIdVal}/options/`, {
+          method: 'PUT',
+          body: JSON.stringify({ variation_option_ids: selected }),
+        });
+        if (!res) return;
+        const data = await readJsonSafe(res);
+        if (!res.ok) {
+          setSkuOptionsAlert((data && (data.detail || data.error)) || 'فشل حفظ الخيارات.', 'danger');
+          return;
+        }
+
+        showToast('تم حفظ خيارات الـ SKU.', 'success');
+        const modal = (window.bootstrap && window.bootstrap.Modal) ? window.bootstrap.Modal.getOrCreateInstance(skuOptionsModalEl) : null;
+        modal?.hide();
+        await loadProducts('/api/products/');
+      } catch (e) {
+        console.error('save sku options failed', e);
+        setSkuOptionsAlert('تعذر الاتصال بالخادم.', 'danger');
+      } finally {
+        skuOptionsSaveBtn.disabled = false;
+        skuOptionsSaveBtn.innerHTML = prev;
+      }
     });
   }
 
@@ -314,11 +538,12 @@
       `;
     }
 
-    const res = await window.request(url);
+    const finalUrl = /^https?:\/\//i.test(url) ? url : buildProductsUrl(url);
+    const res = await window.request(finalUrl);
     if (!res) return;
 
     const data = await readJsonSafe(res);
-    const { results, next, previous } = getPaginatedResults(data);
+    const { results, next, previous, count } = getPaginatedResults(data);
 
     if (loader) loader.classList.add('d-none');
 
@@ -334,12 +559,44 @@
         </div>
       `;
       renderPagination({ next: null, previous: null });
+      setProductsMeta('لا توجد نتائج مطابقة.');
       return;
     }
 
     productsList.innerHTML = results.map(productCardHtml).join('');
     bindProductActions(results);
     renderPagination({ next, previous });
+
+    if (count) setProductsMeta(`إجمالي ${count} — المعروض ${results.length}`);
+    else setProductsMeta(`المعروض ${results.length}`);
+  }
+
+  function bindFilters() {
+    if (filterReset) {
+      filterReset.addEventListener('click', async () => {
+        if (filterSearch) filterSearch.value = '';
+        if (filterCategory) filterCategory.value = '';
+        setProductsMeta('');
+        await loadProducts('/api/products/');
+      });
+    }
+
+    if (filterCategory) {
+      filterCategory.addEventListener('change', async () => {
+        setProductsMeta('');
+        await loadProducts('/api/products/');
+      });
+    }
+
+    if (filterSearch) {
+      filterSearch.addEventListener('input', () => {
+        clearTimeout(filterDebounceId);
+        filterDebounceId = setTimeout(async () => {
+          setProductsMeta('');
+          await loadProducts('/api/products/');
+        }, 300);
+      });
+    }
   }
 
   function buildProductFormData({ name, description, category, imageFile }) {
@@ -488,10 +745,13 @@
 
     await loadCategoriesInto(addCategory);
     await loadCategoriesInto(editCategory);
+    await loadCategoriesInto(filterCategory);
 
     bindAddProduct();
     bindEditProduct();
     bindItemSave();
+    bindFilters();
+    bindSkuOptionsSave();
 
     await loadProducts('/api/products/');
   });

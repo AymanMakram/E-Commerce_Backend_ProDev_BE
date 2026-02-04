@@ -6,6 +6,7 @@ from products.views import StandardResultsSetPagination # هنستعمل نفس 
 
 from products.models import Product
 from django.utils.dateparse import parse_date
+from django.utils import timezone
 
 class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
@@ -201,6 +202,25 @@ class OrderViewSet(viewsets.ModelViewSet):
         except OrderStatus.DoesNotExist:
             return Response({'detail': 'Invalid status.'}, status=400)
         order.order_status = new_status
+
+        # Optional fulfillment tracking updates
+        carrier = request.data.get('shipping_carrier')
+        tracking = request.data.get('tracking_number')
+        if carrier is not None:
+            order.shipping_carrier = str(carrier).strip() or None
+        if tracking is not None:
+            order.tracking_number = str(tracking).strip() or None
+
+        # Best-effort milestone timestamps based on status label
+        label = str(getattr(new_status, 'status', '') or '').strip().lower()
+        now = timezone.now()
+        shipped_keywords = {'shipped', 'shipping', 'تم الشحن', 'تم ارسال', 'تم الإرسال'}
+        delivered_keywords = {'delivered', 'تم التسليم'}
+        if (label in shipped_keywords) and not order.shipped_at:
+            order.shipped_at = now
+        if (label in delivered_keywords) and not order.delivered_at:
+            order.delivered_at = now
+
         order.save()
         serializer = self.get_serializer(order)
         return Response(serializer.data)

@@ -50,6 +50,24 @@
             <h5 class="mb-0">منتجاتي</h5>
         </div>
         <div class="card-body">
+            <div class="card border-0 shadow-sm p-3 mb-3" style="border-radius:16px;">
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small text-muted mb-1" for="seller-product-search">بحث</label>
+                        <input id="seller-product-search" type="text" class="form-control" placeholder="اسم المنتج أو جزء من الوصف" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small text-muted mb-1" for="seller-product-filter-category">الفئة</label>
+                        <select id="seller-product-filter-category" class="form-select">
+                            <option value="">كل الفئات</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-2 d-grid">
+                        <button id="seller-product-filter-reset" type="button" class="btn btn-outline-secondary rounded-pill">مسح</button>
+                    </div>
+                </div>
+                <div class="small text-muted mt-2" id="seller-products-meta"></div>
+            </div>
             <div id="products-list" class="row">
                 <div class="col-12 text-center py-5" id="loader">
                     <div class="spinner-border text-info"></div>
@@ -131,6 +149,29 @@
                     </div>
                     <button type="submit" class="btn btn-primary" id="save-item-btn">حفظ</button>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SKU Options / Variations Modal -->
+<div class="modal fade" id="skuOptionsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">خيارات الـ SKU</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="sku-options-item-id" />
+                <input type="hidden" id="sku-options-product-id" />
+                <div class="text-muted small mb-3">اختر القيم المناسبة لكل اختلاف (مثل اللون/المقاس) ثم احفظ.</div>
+                <div id="sku-options-container"></div>
+                <div id="sku-options-alert" class="alert d-none mt-3 mb-0" role="alert"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                <button type="button" class="btn btn-info text-white" id="sku-options-save">حفظ الخيارات</button>
             </div>
         </div>
     </div>

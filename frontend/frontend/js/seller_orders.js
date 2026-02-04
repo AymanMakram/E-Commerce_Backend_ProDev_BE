@@ -184,6 +184,11 @@
     const customerPhone = order?.customer_phone_number || '';
     const customerUsername = order?.customer_username || '';
 
+    const carrier = order?.shipping_carrier || '';
+    const tracking = order?.tracking_number || '';
+    const shippedAt = order?.shipped_at ? formatDate(order.shipped_at) : '';
+    const deliveredAt = order?.delivered_at ? formatDate(order.delivered_at) : '';
+
     return `
       <div class="card border-0 shadow-sm p-4 mb-3" style="border-radius:16px;">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
@@ -200,6 +205,25 @@
             <div class="fw-bold" style="color:#00BCD4;">${money(order.order_total)} ج.م</div>
             <div class="mt-2">
               <a class="btn btn-sm btn-outline-secondary rounded-pill" href="/orders/track/${order.id}/">تفاصيل</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-2 mt-3">
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted mb-1">شركة الشحن</label>
+            <input class="form-control form-control-sm" placeholder="مثال: Aramex" value="${carrier}" data-action="ship-carrier" data-order-id="${order.id}" />
+          </div>
+          <div class="col-12 col-md-5">
+            <label class="form-label small text-muted mb-1">رقم التتبع</label>
+            <input class="form-control form-control-sm" placeholder="Tracking" value="${tracking}" data-action="ship-tracking" data-order-id="${order.id}" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted mb-1">الحالة الزمنية</label>
+            <div class="small text-muted" style="line-height:1.35;">
+              ${shippedAt ? `شُحن: <span class="fw-bold">${shippedAt}</span><br/>` : ''}
+              ${deliveredAt ? `سُلّم: <span class="fw-bold">${deliveredAt}</span>` : ''}
+              ${(!shippedAt && !deliveredAt) ? '—' : ''}
             </div>
           </div>
         </div>
@@ -335,9 +359,19 @@
   }
 
   async function updateStatus(orderId, statusId) {
+    const carrierInput = root?.querySelector(`[data-action="ship-carrier"][data-order-id="${orderId}"]`);
+    const trackingInput = root?.querySelector(`[data-action="ship-tracking"][data-order-id="${orderId}"]`);
+    const shipping_carrier = String(carrierInput?.value || '').trim();
+    const tracking_number = String(trackingInput?.value || '').trim();
+
+    const payload = { order_status: statusId };
+    // Send even if blank so seller can clear fields
+    payload.shipping_carrier = shipping_carrier;
+    payload.tracking_number = tracking_number;
+
     const res = await window.request(`/api/orders/${orderId}/set-status/`, {
       method: 'PATCH',
-      body: JSON.stringify({ order_status: statusId }),
+      body: JSON.stringify(payload),
     });
     if (!res) return null;
     const data = await readJsonSafe(res);

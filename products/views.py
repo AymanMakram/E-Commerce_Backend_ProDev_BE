@@ -5,6 +5,7 @@ from .serializers import ProductSerializer, ProductCategorySerializer, ProductIt
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import generics
+from rest_framework.decorators import action
 
 # 2. تعريف كلاس التحكم في العدد (Pagination)
 class StandardResultsSetPagination(PageNumberPagination):
@@ -51,9 +52,10 @@ class ProductViewSet(viewsets.ModelViewSet): # تم تغييرها من ReadOnly
     permission_classes = [IsSellerOrReadOnly]
 
     def get_queryset(self):
-        if self.request.user.is_authenticated and self.request.user.user_type == 'seller':
-            return Product.objects.filter(seller=self.request.user)
-        return Product.objects.all()
+        user = self.request.user
+        if user.is_authenticated and getattr(user, 'user_type', None) == 'seller':
+            return Product.objects.filter(seller=user)
+        return Product.objects.filter(is_published=True)
 
     def perform_create(self, serializer):
         # أهم خطوة: ربط المنتج بالبائع اللي عامل login حالياً تلقائياً
@@ -115,3 +117,54 @@ class ProductItemViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Product is included in serializer validated data
         serializer.save()
+
+    @action(detail=True, methods=['put'], url_path='options')
+    def set_options(self, request, pk=None):
+        """Seller-only: replace the ProductConfiguration options for this SKU."""
+        user = request.user
+        if not (user.is_authenticated and getattr(user, 'user_type', None) == 'seller'):
+            return Response({'detail': 'Seller authentication required.'}, status=status.HTTP_403_FORBIDDEN)
+
+        item = self.get_object()  # already seller-filtered by get_queryset
+
+        option_ids = request.data.get('variation_option_ids')
+        if option_ids is None:
+            option_ids = request.data.get('options')
+        if option_ids is None:
+            option_ids = []
+
+        if not isinstance(option_ids, list):
+            return Response({'detail': 'variation_option_ids must be a list.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate options belong to the same category as the product
+        from .models import VariationOption, ProductConfiguration
+
+        unique_ids = []
+        seen = set()
+        for raw in option_ids:
+            try:
+                oid = int(raw)
+            except Exception:
+                continue
+            if oid in seen:
+                continue
+            seen.add(oid)
+            unique_ids.append(oid)
+
+        options = list(VariationOption.objects.select_related('variation', 'variation__category').filter(id__in=unique_ids))
+        if len(options) != len(unique_ids):
+            return Response({'detail': 'One or more variation options are invalid.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        product_category_id = getattr(item.product, 'category_id', None)
+        for opt in options:
+            if getattr(opt.variation, 'category_id', None) != product_category_id:
+                return Response({'detail': 'Variation option does not match product category.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Replace configs
+        ProductConfiguration.objects.filter(product_item=item).delete()
+        ProductConfiguration.objects.bulk_create([
+            ProductConfiguration(product_item=item, variation_option=opt) for opt in options
+        ])
+
+        item.refresh_from_db()
+        return Response(self.get_serializer(item).data)

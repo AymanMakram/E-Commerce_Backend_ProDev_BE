@@ -1,6 +1,14 @@
 from rest_framework import serializers
 from .models import ProductCategory, Product, ProductItem, Variation, VariationOption, ProductConfiguration
 
+
+class VariationSerializer(serializers.ModelSerializer):
+    category_name = serializers.ReadOnlyField(source='category.category_name')
+
+    class Meta:
+        model = Variation
+        fields = ['id', 'name', 'category', 'category_name']
+
 class ProductCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductCategory
@@ -39,7 +47,8 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         # أضفنا 'seller' و 'seller_name' و 'category' (للإدخال)
         fields = [
-            'id', 'name', 'description', 'product_image', 
+            'id', 'name', 'description', 'product_image',
+            'is_published',
             'category', 'category_name', 'seller', 'seller_name', 'items'
         ]
         

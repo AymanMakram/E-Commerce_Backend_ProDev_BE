@@ -20,6 +20,11 @@ class ShopOrder(models.Model):
     order_total = models.DecimalField(max_digits=10, decimal_places=2)
     order_status = models.ForeignKey(OrderStatus, on_delete=models.CASCADE)
 
+    shipping_carrier = models.CharField(max_length=100, null=True, blank=True)
+    tracking_number = models.CharField(max_length=120, null=True, blank=True)
+    shipped_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         verbose_name = "Shop Order"
         verbose_name_plural = "Shop Orders"
