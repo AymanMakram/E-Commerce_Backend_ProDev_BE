@@ -8,6 +8,11 @@
   const detailsEl = byId('order-track-details');
   const statusUpdateEl = byId('order-status-update');
 
+  const esc = (value) => {
+    if (typeof window.escapeHtml === 'function') return window.escapeHtml(value);
+    return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  };
+
   function showToast(message, type = 'info') {
     if (typeof window.showToast === 'function') return window.showToast(message, type);
     alert(message);
@@ -43,7 +48,7 @@
     const key = s.toLowerCase();
 
     const pill = (text, bg, fg, border) =>
-      `<span class="badge rounded-pill" style="background:${bg}; color:${fg}; border:1px solid ${border};">${text}</span>`;
+      `<span class="badge rounded-pill" style="background:${bg}; color:${fg}; border:1px solid ${border};">${esc(text)}</span>`;
 
     if (!s || key === 'pending') return pill('قيد الانتظار', 'rgba(245,158,11,.12)', '#b45309', 'rgba(245,158,11,.35)');
     if (key === 'success' || key === 'paid') return pill('تم الدفع', 'rgba(34,197,94,.12)', '#16a34a', 'rgba(34,197,94,.35)');
@@ -66,7 +71,7 @@
 
   function renderError(message) {
     if (!detailsEl) return;
-    detailsEl.innerHTML = `<div class="alert alert-danger">${message}</div>`;
+    detailsEl.innerHTML = `<div class="alert alert-danger">${esc(message)}</div>`;
   }
 
   function renderOrder(order) {
@@ -98,7 +103,7 @@
           <div>
             <div class="fw-bold" style="color:#0f172a;">طلب رقم #${order.id}</div>
             <div class="text-muted small">تاريخ الطلب: ${formatDate(order.order_date)}</div>
-            <div class="mt-2">الحالة الحالية: <span class="fw-bold" style="color:#00BCD4;">${order.status_display || ''}</span></div>
+            <div class="mt-2">الحالة الحالية: <span class="fw-bold" style="color:#00BCD4;">${esc(order.status_display || '')}</span></div>
             <div class="text-muted small">حالة الدفع: ${paymentBadge(order.payment_status)}</div>
           </div>
           <div class="text-end">
@@ -114,7 +119,7 @@
                 <i class="fa-solid fa-location-dot" style="color:#00BCD4;"></i>
                 <div class="fw-bold" style="color:#0f172a;">عنوان الشحن</div>
               </div>
-              <div class="text-muted">${addressLine || '—'}</div>
+              <div class="text-muted">${esc(addressLine || '—')}</div>
             </div>
           </div>
           <div class="col-12 col-lg-5">
@@ -123,8 +128,8 @@
                 <i class="fa-solid fa-user" style="color:#00BCD4;"></i>
                 <div class="fw-bold" style="color:#0f172a;">بيانات العميل</div>
               </div>
-              <div class="text-muted">اسم المستخدم: <span class="fw-bold">${customerUsername || '—'}</span></div>
-              <div class="text-muted mt-1">الهاتف: <span class="fw-bold">${customerPhone || '—'}</span></div>
+              <div class="text-muted">اسم المستخدم: <span class="fw-bold">${esc(customerUsername || '—')}</span></div>
+              <div class="text-muted mt-1">الهاتف: <span class="fw-bold">${esc(customerPhone || '—')}</span></div>
             </div>
           </div>
         </div>
@@ -145,8 +150,8 @@
                 .map(
                   (l) => `
                 <tr>
-                  <td>${l.product_name || ''}</td>
-                  <td><span class="badge bg-secondary">${l.sku || ''}</span></td>
+                  <td>${esc(l.product_name || '')}</td>
+                  <td><span class="badge bg-secondary">${esc(l.sku || '')}</span></td>
                   <td class="fw-bold">x${Number(l.qty ?? 0)}</td>
                   <td>${money(l.price)} ج.م</td>
                 </tr>`
@@ -166,19 +171,11 @@
     return Array.isArray(data) ? data : [];
   }
 
-  function isSeller() {
-    try {
-      const t = localStorage.getItem('user_type');
-      const token = localStorage.getItem('access_token');
-      return Boolean(token) && t === 'seller';
-    } catch (_) {
-      return false;
-    }
-  }
-
   async function renderStatusUpdate(order) {
     if (!statusUpdateEl) return;
-    if (!isSeller()) {
+
+    const me = await (window.__veloAuth?.getMe ? window.__veloAuth.getMe() : Promise.resolve(null));
+    if (!me || me.user_type !== 'seller') {
       statusUpdateEl.innerHTML = '';
       return;
     }
@@ -192,7 +189,7 @@
     const options = statuses
       .map((s) => {
         const selected = String(s.id) === String(order.order_status_id ?? '') ? 'selected' : '';
-        return `<option value="${s.id}" ${selected}>${s.status}</option>`;
+        return `<option value="${esc(s.id)}" ${selected}>${esc(s.status)}</option>`;
       })
       .join('');
 

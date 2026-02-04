@@ -11,7 +11,9 @@ from .views import (
     SessionTokenObtainPairView,
     UserProfileViewSet,
     country_list,
+    csrf_token_view,
     login_page,
+    logout_view,
     payment_type_list,
     register_page,
 )
@@ -23,6 +25,9 @@ urlpatterns = [
     # واجهة المستخدم (HTML)
     path('login-view/', login_page, name='login_html'), 
     path('register-view/', register_page, name='register_html'),
+    # CSRF + session management for browser frontend
+    path('csrf/', csrf_token_view, name='csrf_token'),
+    path('logout/', logout_view, name='logout'),
     # 1. نظام التسجيل
     path('register/', RegisterView.as_view(), name='auth_register'),
     # Endpoint for payment types

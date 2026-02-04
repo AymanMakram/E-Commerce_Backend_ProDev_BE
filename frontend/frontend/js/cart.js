@@ -83,21 +83,25 @@
       const qty = Number(item.qty || item.quantity || 1);
       const imagePath = normalizeImageUrl(item.image || item.product_image || item?.product_item?.product_image || '');
 
+      const safeId = escapeHtml(String(item.id ?? ''));
+      const safeName = escapeHtml(name);
+      const safeImagePath = escapeHtml(imagePath);
+
       return `
         <div class="col-12">
           <div class="card border-0 shadow-sm p-3" style="border-radius: 18px;">
             <div class="d-flex align-items-center">
               <div class="me-3" style="width:72px;height:72px;border-radius:14px;background:#f1f5f9;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-                ${imagePath ? `<img src="${imagePath}" alt="${name}" style="width:100%;height:100%;object-fit:cover;" />` : `<span class="text-muted small">IMG</span>`}
+                ${imagePath ? `<img src="${safeImagePath}" alt="${safeName}" style="width:100%;height:100%;object-fit:cover;" />` : `<span class="text-muted small">IMG</span>`}
               </div>
               <div class="flex-grow-1">
-                <div class="fw-bold">${name}</div>
+                <div class="fw-bold">${safeName}</div>
                 <div class="text-muted small">${formatCurrencyEGP(price)}</div>
                 <div class="d-flex align-items-center mt-2">
-                  <button class="btn btn-sm btn-outline-info rounded-pill" onclick="updateQuantity('${item.id}', ${Math.max(1, qty - 1)})">-</button>
+                  <button class="btn btn-sm btn-outline-info rounded-pill" data-action="qty-dec" data-item-id="${safeId}" data-new-qty="${Math.max(1, qty - 1)}">-</button>
                   <span class="mx-3 fw-bold">${qty}</span>
-                  <button class="btn btn-sm btn-outline-info rounded-pill" onclick="updateQuantity('${item.id}', ${qty + 1})">+</button>
-                  <button class="btn btn-sm btn-link text-danger ms-auto text-decoration-none" onclick="deleteCartItem('${item.id}')">
+                  <button class="btn btn-sm btn-outline-info rounded-pill" data-action="qty-inc" data-item-id="${safeId}" data-new-qty="${qty + 1}">+</button>
+                  <button class="btn btn-sm btn-link text-danger ms-auto text-decoration-none" data-action="delete-item" data-item-id="${safeId}">
                     <i class="fa-solid fa-trash-can me-1"></i> حذف
                   </button>
                 </div>
@@ -109,7 +113,35 @@
   }
 
   function escapeHtml(str) {
+    if (typeof window.escapeHtml === 'function') return window.escapeHtml(str);
     return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function bindCartItemActions() {
+    if (!cartItemsContainer) return;
+
+    cartItemsContainer.addEventListener('click', (event) => {
+      const btn = event.target?.closest?.('button[data-action]');
+      if (!btn) return;
+
+      const action = btn.getAttribute('data-action');
+      const itemId = btn.getAttribute('data-item-id');
+
+      if (!action || !itemId) return;
+
+      if (action === 'delete-item') {
+        window.deleteCartItem(itemId);
+        return;
+      }
+
+      if (action === 'qty-dec' || action === 'qty-inc') {
+        const newQtyRaw = btn.getAttribute('data-new-qty');
+        const newQty = parseInt(newQtyRaw || '', 10);
+        if (Number.isFinite(newQty) && newQty > 0) {
+          window.updateQuantity(itemId, newQty);
+        }
+      }
+    });
   }
 
   function addressLabel(a) {
@@ -405,6 +437,7 @@
     if (typeof window.bindCartBadge === 'function') window.bindCartBadge('cart-count');
 
     if (cartItemsContainer) {
+      bindCartItemActions();
       window.fetchCartFromApi();
       bindCheckoutModal();
       bindCheckoutConfirm();

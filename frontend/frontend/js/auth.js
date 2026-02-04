@@ -3,6 +3,8 @@
 (function () {
   'use strict';
 
+  let mePromise = null;
+
   function getSafeNextFromUrl() {
     try {
       const u = new URL(window.location.href);
@@ -26,38 +28,25 @@
     alert(message);
   }
 
-  function getStored(key) {
-    try {
-      return localStorage.getItem(key);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  function setStored(key, value) {
-    try {
-      localStorage.setItem(key, value);
-    } catch (_) {
-      // ignore
-    }
-  }
-
-  async function ensureUserType() {
-    const token = getStored('access_token');
-    const userType = getStored('user_type');
-    if (!token || userType) return userType;
-
+  async function fetchMe() {
     try {
       const res = await fetch('/api/accounts/profile/me/', {
-        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' },
       });
       if (!res.ok) return null;
       const data = await res.json().catch(() => null);
-      if (data && data.user_type) setStored('user_type', data.user_type);
-      return data?.user_type || null;
+      if (!data || !data.id) return null;
+      return data;
     } catch (_) {
       return null;
     }
+  }
+
+  function getMe(forceRefresh = false) {
+    if (forceRefresh) mePromise = null;
+    if (!mePromise) mePromise = fetchMe();
+    return mePromise;
   }
 
   function redirectSellerFromCustomerPages(isSeller) {
@@ -80,12 +69,14 @@
     if (isCustomerOnly) window.location.replace('/seller/');
   }
 
-  function updateNavbar() {
-    const username = getStored('username');
-    const token = getStored('access_token');
-    const userType = getStored('user_type');
+  async function updateNavbar() {
     const authSection = document.getElementById('auth-section');
     if (!authSection) return;
+
+    const me = await getMe();
+    const token = Boolean(me);
+    const username = me?.username || '';
+    const userType = me?.user_type || '';
 
     const brandLink = document.getElementById('nav-brand-link');
     const productsLink = document.getElementById('nav-products-link');
@@ -103,12 +94,14 @@
     redirectSellerFromCustomerPages(isSeller);
 
     if (token && username) {
+      const esc = (v) => (typeof window.escapeHtml === 'function' ? window.escapeHtml(v) : String(v ?? ''));
+      const safeUsername = esc(username);
       authSection.innerHTML = `
         <div class="d-flex align-items-center">
           <a href="${isSeller ? '/seller/profile/' : '/profile/'}" class="d-flex align-items-center justify-content-center me-2" style="width:38px;height:38px;border-radius:50%;background:#e0f7fa;overflow:hidden;text-decoration:none;">
             <i class="fa-solid fa-user" style="color:#00BCD4;font-size:1.3rem;"></i>
           </a>
-          <span class="text-white me-3 small">مرحباً، <strong class="user-name-highlight">${username}</strong></span>
+          <span class="text-white me-3 small">مرحباً، <strong class="user-name-highlight">${safeUsername}</strong></span>
           ${isSeller ? `
             <a href="/seller/" class="btn btn-sm btn-outline-info rounded-pill px-3 me-2" style="border-color:#00BCD4;color:#00BCD4;">لوحة التحكم</a>
             <a href="/seller/orders/" class="btn btn-sm btn-outline-info rounded-pill px-3 me-2" style="border-color:#00BCD4;color:#00BCD4;">الطلبات</a>
@@ -127,14 +120,22 @@
     }
   }
 
-  window.handleLogout = function handleLogout() {
+  async function handleLogout() {
     try {
-      localStorage.clear();
+      if (typeof window.request === 'function') {
+        await window.request('/api/accounts/logout/', { method: 'POST', redirectOnAuthError: false });
+      } else {
+        await fetch('/api/accounts/logout/', { method: 'POST', credentials: 'include' });
+      }
     } catch (_) {
       // ignore
+    } finally {
+      mePromise = null;
+      window.location.replace('/api/accounts/login-view/');
     }
-    window.location.replace('/api/accounts/login-view/');
-  };
+  }
+
+  window.handleLogout = handleLogout;
 
   async function initLoginForm() {
     const loginForm = document.getElementById('login-form');
@@ -162,44 +163,24 @@
       try {
         const res = await fetch('/api/accounts/login/', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify({ username, password }),
         });
 
         const data = await res.json().catch(() => ({}));
 
-        if (res.ok && data.access) {
-          localStorage.setItem('access_token', data.access);
-          localStorage.setItem('refresh_token', data.refresh);
-          localStorage.setItem('username', username);
+        if (res.ok) {
+          // Establish CSRF cookie for subsequent session-auth requests.
+          if (window.__velo?.ensureCsrfToken) await window.__velo.ensureCsrfToken();
 
-          // Prefer returning to ?next= if present
           const next = getSafeNextFromUrl();
-
-          // Determine user type (and persist it for seller-only UI)
-          try {
-            const profileRes = await fetch('/api/accounts/profile/me/', {
-              headers: { 'Authorization': `Bearer ${data.access}` },
-            });
-            if (profileRes.ok) {
-              const userData = await profileRes.json();
-              try {
-                localStorage.setItem('user_type', userData.user_type || '');
-              } catch (_) {
-                // ignore
-              }
-              if (next) {
-                window.location.replace(next);
-              } else {
-                window.location.replace(userData.user_type === 'seller' ? '/seller/' : '/products/');
-              }
-              return;
-            }
-          } catch (_) {
-            // ignore
+          const me = await getMe(true);
+          if (next) {
+            window.location.replace(next);
+          } else {
+            window.location.replace(me?.user_type === 'seller' ? '/seller/' : '/products/');
           }
-
-          window.location.replace(next || '/products/');
           return;
         }
 
@@ -224,11 +205,11 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
-    await ensureUserType();
     updateNavbar();
     if (typeof window.bindCartBadge === 'function') window.bindCartBadge('cart-count');
     initLoginForm();
   });
 
   window.updateNavbar = updateNavbar;
+  window.__veloAuth = { getMe };
 })();

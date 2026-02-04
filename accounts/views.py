@@ -9,11 +9,12 @@ Contains:
 Kept intentionally simple and DRF-native.
 """
 
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import redirect, render
+from django.middleware.csrf import get_token
 
 from rest_framework import generics, status, viewsets
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -73,6 +74,32 @@ class SessionTokenObtainPairView(TokenObtainPairView):
 def register_page(request):
     """Render register page (HTML)."""
     return render(request, 'auth/register.html')
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def csrf_token_view(request):
+    """Ensure a CSRF cookie exists and return the token.
+
+    This is useful for SPA-style fetch() requests that rely on session auth.
+    """
+    token = get_token(request)
+    return Response({'csrfToken': token})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def logout_view(request):
+    """Log out the current session user.
+
+    Safe to call even when not authenticated.
+    """
+    try:
+        logout(getattr(request, '_request', request))
+    except Exception:
+        # If anything goes wrong, still return a success response.
+        pass
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['GET'])

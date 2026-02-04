@@ -23,7 +23,7 @@ Build a high-performance, production-ready commerce foundation tailored for Egyp
 
 - [x] **Product browsing** with category filtering + search + pagination (`/products/`)
 - [x] **Product details** with SKU/variation selection + stock display (`/products/<id>/`)
-- [x] **JWT-authenticated cart** + add/update/remove items (`/api/cart/…`)
+- [x] **Session-authenticated cart (browser UI)** + add/update/remove items (`/api/cart/…`)
 - [x] **Atomic checkout** (locks cart/SKUs, validates stock, computes totals server-side)
 - [x] **Order history** and **order tracking page** (`/orders/`, `/orders/track/<id>/`)
 - [x] **Localized profile**: Countries/Addresses + Payment Methods (default supported)
@@ -38,7 +38,8 @@ Build a high-performance, production-ready commerce foundation tailored for Egyp
 
 ### Platform Behaviors
 
-- [x] **JWT login + Django session bridging**: JWT login also creates a Django session so server-rendered seller pages work without redirect loops.
+- [x] **Browser UI auth = Django session + CSRF**: frontend pages authenticate via same-origin session cookies (no JWT storage in the browser).
+- [x] **JWT login + Django session bridging**: `/api/accounts/login/` returns JWTs for API clients and also creates a Django session so server-rendered pages work without redirect loops.
 - [x] **Payment status automation**: `Transaction.payment_status` is synced from `ShopOrder.order_status` via signals.
 - [x] **Invoice model + automation**: invoice is created when a transaction becomes `Success`.
 
@@ -49,7 +50,9 @@ Build a high-performance, production-ready commerce foundation tailored for Egyp
 ### Decoupled Design
 
 - **Backend**: Django + Django REST Framework (DRF)
-- **Auth**: SimpleJWT (Bearer tokens) + Django sessions for server-rendered seller/customer pages
+- **Auth**:
+  - **Browser UI**: Django **sessions** (cookie-based) + **CSRF** for unsafe requests.
+  - **External API clients**: SimpleJWT (Bearer tokens).
 - **Frontend**: Django templates as entry points + Vanilla JS modules under `frontend/frontend/js/` that call REST APIs using `fetch`.
 
 ### Data Model Highlights
@@ -169,7 +172,9 @@ Once the server is running:
 ### Auth & Accounts
 
 - `POST /api/accounts/register/` (customer or seller)
-- `POST /api/accounts/login/` (JWT + establishes Django session)
+- `POST /api/accounts/login/` (returns JWTs for API clients + establishes Django session for browser UI)
+- `GET /api/accounts/csrf/` (ensure CSRF cookie; returns token for SPA-style requests)
+- `POST /api/accounts/logout/` (session logout)
 - `POST /api/accounts/token/refresh/`
 - `GET|PUT /api/accounts/profile/me/`
 - `GET /api/accounts/countries/`

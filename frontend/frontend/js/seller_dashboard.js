@@ -52,6 +52,11 @@
 
   const DEFAULT_IMAGE = '/static/images/no-image.svg';
 
+  const esc = (value) => {
+    if (typeof window.escapeHtml === 'function') return window.escapeHtml(value);
+    return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  };
+
   function showToast(message, type = 'info') {
     if (typeof window.showToast === 'function') return window.showToast(message, type);
     alert(message);
@@ -173,21 +178,27 @@
 
   function productCardHtml(p) {
         const isPublished = (p && typeof p.is_published !== 'undefined') ? Boolean(p.is_published) : true;
+        const safeProductId = esc(String(p?.id ?? ''));
         const pubBadge = isPublished
           ? '<span class="badge rounded-pill bg-success">منشور</span>'
           : '<span class="badge rounded-pill bg-secondary">غير منشور</span>';
         const pubBtn = isPublished
-          ? `<button class="btn btn-sm btn-outline-secondary rounded-pill" data-action="product-unpublish" data-id="${p.id}">إخفاء</button>`
-          : `<button class="btn btn-sm btn-outline-info rounded-pill" data-action="product-publish" data-id="${p.id}" style="border-color:#00BCD4;color:#00BCD4;">نشر</button>`;
+          ? `<button class="btn btn-sm btn-outline-secondary rounded-pill" data-action="product-unpublish" data-id="${safeProductId}">إخفاء</button>`
+          : `<button class="btn btn-sm btn-outline-info rounded-pill" data-action="product-publish" data-id="${safeProductId}" style="border-color:#00BCD4;color:#00BCD4;">نشر</button>`;
     const img = normalizeImgUrl(p.product_image);
+    const safeImg = esc(img);
     const items = Array.isArray(p.items) ? p.items : [];
+
+    const safeName = esc(p.name || '');
+    const safeCategoryName = esc(p.category_name || '');
+    const safeDescription = esc(truncate(p.description, 140));
 
     const itemsHtml = items.length
       ? `
         <div class="mt-3">
           <div class="d-flex justify-content-between align-items-center">
             <div class="fw-bold small" style="color:#0f172a;">المخزون / الـ SKU</div>
-            <button class="btn btn-sm btn-outline-info rounded-pill" data-action="item-add" data-product-id="${p.id}" style="border-color:#00BCD4;color:#00BCD4;">إضافة SKU</button>
+            <button class="btn btn-sm btn-outline-info rounded-pill" data-action="item-add" data-product-id="${safeProductId}" style="border-color:#00BCD4;color:#00BCD4;">إضافة SKU</button>
           </div>
           <div class="table-responsive mt-2">
             <table class="table table-sm align-middle mb-0">
@@ -202,13 +213,13 @@
               <tbody>
                 ${items.map((it) => `
                   <tr>
-                    <td>${it.sku || ''}</td>
+                    <td>${esc(it.sku || '')}</td>
                     <td>${Number(it.qty_in_stock ?? 0)}</td>
-                    <td>${it.price ?? ''}</td>
+                    <td>${esc(String(it.price ?? ''))}</td>
                     <td class="text-end">
-                      <button class="btn btn-sm btn-outline-info rounded-pill" data-action="item-options" data-item-id="${it.id}" data-product-id="${p.id}" style="border-color:#00BCD4;color:#00BCD4;">الخيارات</button>
-                      <button class="btn btn-sm btn-outline-secondary rounded-pill" data-action="item-edit" data-item-id="${it.id}" data-product-id="${p.id}">تعديل</button>
-                      <button class="btn btn-sm btn-outline-danger rounded-pill" data-action="item-delete" data-item-id="${it.id}">حذف</button>
+                      <button class="btn btn-sm btn-outline-info rounded-pill" data-action="item-options" data-item-id="${esc(String(it.id ?? ''))}" data-product-id="${safeProductId}" style="border-color:#00BCD4;color:#00BCD4;">الخيارات</button>
+                      <button class="btn btn-sm btn-outline-secondary rounded-pill" data-action="item-edit" data-item-id="${esc(String(it.id ?? ''))}" data-product-id="${safeProductId}">تعديل</button>
+                      <button class="btn btn-sm btn-outline-danger rounded-pill" data-action="item-delete" data-item-id="${esc(String(it.id ?? ''))}">حذف</button>
                     </td>
                   </tr>
                 `).join('')}
@@ -220,35 +231,44 @@
       : `
         <div class="mt-3 d-flex justify-content-between align-items-center">
           <div class="text-muted small">لا توجد عناصر (SKU) بعد.</div>
-          <button class="btn btn-sm btn-outline-info rounded-pill" data-action="item-add" data-product-id="${p.id}" style="border-color:#00BCD4;color:#00BCD4;">إضافة SKU</button>
+          <button class="btn btn-sm btn-outline-info rounded-pill" data-action="item-add" data-product-id="${safeProductId}" style="border-color:#00BCD4;color:#00BCD4;">إضافة SKU</button>
         </div>
       `;
 
     return `
-      <div class="col-md-6 col-lg-4 mb-4" data-product-card="${p.id}">
+      <div class="col-md-6 col-lg-4 mb-4" data-product-card="${safeProductId}">
         <div class="card h-100 shadow-sm" style="border-radius:16px; overflow:hidden;">
           <div style="height:180px; background:#f8fafc;">
-            <img src="${img}" alt="${p.name || 'Product'}" style="width:100%;height:180px;object-fit:cover;" onerror="this.src='${DEFAULT_IMAGE}'" />
+            <img src="${safeImg}" alt="${safeName || 'Product'}" style="width:100%;height:180px;object-fit:cover;" data-action="img-fallback" />
           </div>
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-start gap-2">
               <div>
-                <h5 class="card-title mb-1" style="color:#0f172a;">${p.name || ''}</h5>
-                <div class="text-muted small">${p.category_name || ''}</div>
+                <h5 class="card-title mb-1" style="color:#0f172a;">${safeName}</h5>
+                <div class="text-muted small">${safeCategoryName}</div>
                 <div class="mt-2">${pubBadge}</div>
               </div>
               <div class="d-flex flex-column gap-2">
-                <button class="btn btn-sm btn-outline-secondary rounded-pill" data-action="product-edit" data-id="${p.id}">تعديل</button>
+                <button class="btn btn-sm btn-outline-secondary rounded-pill" data-action="product-edit" data-id="${safeProductId}">تعديل</button>
                 ${pubBtn}
-                <button class="btn btn-sm btn-outline-danger rounded-pill" data-action="product-delete" data-id="${p.id}">حذف</button>
+                <button class="btn btn-sm btn-outline-danger rounded-pill" data-action="product-delete" data-id="${safeProductId}">حذف</button>
               </div>
             </div>
-            <p class="text-muted small mt-2 mb-0">${truncate(p.description, 140)}</p>
+            <p class="text-muted small mt-2 mb-0">${safeDescription}</p>
             ${itemsHtml}
           </div>
         </div>
       </div>
     `;
+  }
+
+  function bindImageFallbacks() {
+    if (!productsList) return;
+    productsList.querySelectorAll('img[data-action="img-fallback"]').forEach((img) => {
+      img.addEventListener('error', () => {
+        img.src = DEFAULT_IMAGE;
+      }, { once: true });
+    });
   }
 
   function bindProductActions(products) {
@@ -391,17 +411,18 @@
         ${variations
           .map((v) => {
             const varName = String(v.name || 'Variation');
+            const varNameEsc = esc(varName);
             const opts = Array.isArray(v.options) ? v.options : [];
             const selectedId = currentOptionsByVariationName?.get(varName) || '';
             return `
               <div class="col-12 col-md-6">
-                <label class="form-label fw-bold">${varName}</label>
-                <select class="form-select" data-sku-var="${varName}">
+                <label class="form-label fw-bold">${varNameEsc}</label>
+                <select class="form-select" data-sku-var="${varNameEsc}">
                   <option value="">—</option>
                   ${opts
                     .map((o) => {
                       const sel = String(o.id) === String(selectedId) ? 'selected' : '';
-                      return `<option value="${o.id}" ${sel}>${o.value}</option>`;
+                      return `<option value="${esc(o.id)}" ${sel}>${esc(o.value)}</option>`;
                     })
                     .join('')}
                 </select>
@@ -565,6 +586,7 @@
 
     productsList.innerHTML = results.map(productCardHtml).join('');
     bindProductActions(results);
+    bindImageFallbacks();
     renderPagination({ next, previous });
 
     if (count) setProductsMeta(`إجمالي ${count} — المعروض ${results.length}`);

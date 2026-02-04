@@ -279,6 +279,7 @@
     const rawImages = [product?.product_image, ...items.map((i) => i.product_image)].map(normalizeImageUrl);
     const images = uniqueImages(rawImages);
     const main = images[0] || DEFAULT_IMAGE;
+    const mainEsc = escapeHtml(main);
     state.mainImage = main;
 
     const variationNames = Object.keys(optionsMap).sort((a, b) => String(a).localeCompare(String(b)));
@@ -310,12 +311,12 @@
       <div class="row g-4">
         <div class="col-lg-5">
           <div class="card border-0 shadow-sm" style="border-radius: 18px; overflow: hidden; background: #f1f5f9;">
-            <img id="product-main-image" src="${main}" alt="${name}" style="width:100%; height:360px; object-fit:contain; background:#f1f5f9;" onerror="this.onerror=null;this.src='${DEFAULT_IMAGE}';" />
+            <img id="product-main-image" src="${mainEsc}" alt="${name}" style="width:100%; height:360px; object-fit:contain; background:#f1f5f9;" />
           </div>
           <div class="d-flex gap-2 mt-3 flex-wrap">
             ${images.map((u) => `
-              <button type="button" class="btn p-0 border ${u === main ? 'border-info' : 'border-light'}" data-thumb="${u}" style="border-radius: 14px; width: 74px; height: 74px; overflow: hidden; background:#fff;">
-                <img src="${u}" alt="" style="width:100%; height:100%; object-fit:cover;" onerror="this.onerror=null;this.src='${DEFAULT_IMAGE}';" />
+              <button type="button" class="btn p-0 border ${u === main ? 'border-info' : 'border-light'}" data-thumb="${escapeHtml(u)}" style="border-radius: 14px; width: 74px; height: 74px; overflow: hidden; background:#fff;">
+                <img src="${escapeHtml(u)}" alt="" style="width:100%; height:100%; object-fit:cover;" data-action="thumb-img" />
               </button>`).join('')}
           </div>
         </div>
@@ -368,22 +369,39 @@
     if (skeleton) skeleton.classList.add('d-none');
 
     // Guest UX: make "Add to cart" clearly require login.
-    const token = (() => { try { return localStorage.getItem('access_token'); } catch (_) { return null; } })();
     const addBtnGuest = document.getElementById('product-add');
-    if (addBtnGuest && !token) {
-      addBtnGuest.classList.remove('btn-info');
-      addBtnGuest.classList.add('btn-outline-secondary');
-      addBtnGuest.title = 'سجّل الدخول لإضافة للسلة';
-      addBtnGuest.setAttribute('aria-label', addBtnGuest.title);
-      addBtnGuest.innerHTML = '<i class="fa fa-lock ms-2"></i> سجّل الدخول للإضافة';
+    const cartLink = document.getElementById('product-cart-link');
+    if (window.__veloAuth?.getMe) {
+      window.__veloAuth.getMe().then((me) => {
+        if (me) return;
+        if (addBtnGuest) {
+          addBtnGuest.classList.remove('btn-info');
+          addBtnGuest.classList.add('btn-outline-secondary');
+          addBtnGuest.title = 'سجّل الدخول لإضافة للسلة';
+          addBtnGuest.setAttribute('aria-label', addBtnGuest.title);
+          addBtnGuest.innerHTML = '<i class="fa fa-lock ms-2"></i> سجّل الدخول للإضافة';
+        }
+        if (cartLink) {
+          cartLink.href = '/api/accounts/login-view/?next=%2Fcart%2F';
+          cartLink.title = 'سجّل الدخول لعرض السلة';
+          cartLink.setAttribute('aria-label', cartLink.title);
+        }
+      }).catch(() => null);
     }
 
-    const cartLink = document.getElementById('product-cart-link');
-    if (cartLink && !token) {
-      cartLink.href = '/api/accounts/login-view/?next=%2Fcart%2F';
-      cartLink.title = 'سجّل الدخول لعرض السلة';
-      cartLink.setAttribute('aria-label', cartLink.title);
+    // Bind safe image fallbacks (avoid inline event handlers)
+    const mainImgEl = document.getElementById('product-main-image');
+    if (mainImgEl) {
+      mainImgEl.addEventListener('error', () => {
+        mainImgEl.src = DEFAULT_IMAGE;
+        state.mainImage = DEFAULT_IMAGE;
+      }, { once: true });
     }
+    document.querySelectorAll('img[data-action="thumb-img"]')?.forEach((img) => {
+      img.addEventListener('error', () => {
+        img.src = DEFAULT_IMAGE;
+      }, { once: true });
+    });
 
     // Bind thumbnails
     document.querySelectorAll('[data-thumb]')?.forEach((btn) => {
@@ -468,8 +486,8 @@
     const addBtn = document.getElementById('product-add');
     if (addBtn) {
       addBtn.addEventListener('click', async () => {
-        const token = (() => { try { return localStorage.getItem('access_token'); } catch (_) { return null; } })();
-        if (!token) {
+        const me = await (window.__veloAuth?.getMe ? window.__veloAuth.getMe() : Promise.resolve(null));
+        if (!me) {
           showToast('سجّل الدخول لإضافة المنتجات إلى السلة.', 'info');
           redirectToLogin();
           return;

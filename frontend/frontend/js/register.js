@@ -4,6 +4,11 @@
 (function () {
   'use strict';
 
+  const esc = (value) => {
+    if (typeof window.escapeHtml === 'function') return window.escapeHtml(value);
+    return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  };
+
   function getCsrfToken() {
     const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
     return csrfInput ? csrfInput.value : '';
@@ -34,7 +39,7 @@
       return;
     }
 
-    errorDiv.innerHTML = cleaned.map((m) => `• ${m}`).join('<br>');
+    errorDiv.innerHTML = cleaned.map((m) => `• ${esc(m)}`).join('<br>');
     errorDiv.classList.remove('d-none');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }

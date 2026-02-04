@@ -4,6 +4,8 @@
 (function () {
   'use strict';
 
+  let cachedCsrfToken = '';
+
   const DEFAULTS = {
     apiBase: '', // '' => same-origin, set to 'http://127.0.0.1:8000' for standalone
     loginUrl: '/api/accounts/login-view/',
@@ -25,8 +27,27 @@
       apiBase: cfg.apiBase ?? DEFAULTS.apiBase,
       loginUrl: cfg.loginUrl ?? DEFAULTS.loginUrl,
       mediaUrl: cfg.mediaUrl ?? DEFAULTS.mediaUrl,
-      csrfToken: cfg.csrfToken || getCookie('csrftoken') || '',
+      csrfToken: cachedCsrfToken || cfg.csrfToken || getCookie('csrftoken') || '',
     };
+  }
+
+  async function ensureCsrfToken() {
+    const { csrfToken } = getConfig();
+    if (csrfToken) {
+      cachedCsrfToken = csrfToken;
+      return csrfToken;
+    }
+
+    try {
+      const res = await fetch(absoluteUrl('/api/accounts/csrf/'), { credentials: 'include' });
+      if (!res.ok) return '';
+      const data = await res.json().catch(() => null);
+      const token = data?.csrfToken || getCookie('csrftoken') || '';
+      cachedCsrfToken = token;
+      return token;
+    } catch (_) {
+      return '';
+    }
   }
 
   function absoluteUrl(endpoint) {
@@ -38,10 +59,14 @@
   }
 
   function clearAuthAndRedirect() {
+    // Best-effort: clear any existing session on the server.
+    // If CSRF is missing this may fail; that's fine because we still redirect.
     try {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('username');
+      fetch(absoluteUrl('/api/accounts/logout/'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') || '' },
+      }).catch(() => null);
     } catch (_) {
       // ignore
     }
@@ -66,12 +91,6 @@
 
     if (csrfToken) headers['X-CSRFToken'] = csrfToken;
 
-    const token = (() => {
-      try { return localStorage.getItem('access_token'); } catch (_) { return null; }
-    })();
-
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
     return headers;
   }
 
@@ -82,6 +101,10 @@
    */
   async function request(endpoint, options = {}) {
     const finalOptions = { credentials: 'include', ...options };
+
+    const method = String(finalOptions.method || 'GET').toUpperCase();
+    const needsCsrf = !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method);
+    if (needsCsrf) await ensureCsrfToken();
 
     // Merge headers safely
     const originalHeaders = (finalOptions.headers && typeof finalOptions.headers === 'object') ? finalOptions.headers : {};
@@ -94,7 +117,8 @@
 
     const response = await fetch(absoluteUrl(endpoint), finalOptions);
 
-    if (response.status === 401 || response.status === 403) {
+    const shouldRedirect = finalOptions.redirectOnAuthError !== false;
+    if (shouldRedirect && (response.status === 401 || response.status === 403)) {
       clearAuthAndRedirect();
       return null;
     }
@@ -147,5 +171,5 @@
   window.VeloState = State;
   window.bindCartBadge = bindCartBadge;
   window.normalizeMediaUrl = normalizeMediaUrl;
-  window.__velo = { getConfig, clearAuthAndRedirect };
+  window.__velo = { getConfig, clearAuthAndRedirect, ensureCsrfToken };
 })();

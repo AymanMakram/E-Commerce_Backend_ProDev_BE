@@ -6,6 +6,18 @@
 (function () {
   'use strict';
 
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, (c) => (
+      {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;',
+      }[c] || c
+    ));
+  }
+
   /**
    * Render a Bootstrap toast into #toast-container.
    * Falls back to alert() if the container is missing.
@@ -76,23 +88,11 @@
    */
   async function refreshCartBadge() {
     try {
-      let token = null;
-      let userType = null;
-      try {
-        token = localStorage.getItem('access_token');
-        userType = localStorage.getItem('user_type');
-      } catch (_) {
-        // ignore
-      }
-
-      if (!token) return;
-      if (userType === 'seller') return;
-
       const apiUrl = window.CART_CONFIG?.apiUrl || '/api/cart/';
       const url = `${apiUrl}?t=${Date.now()}`;
 
       const response = (typeof window.request === 'function')
-        ? await window.request(url, { method: 'GET' })
+        ? await window.request(url, { method: 'GET', redirectOnAuthError: false })
         : await fetch(url, { credentials: 'include' });
 
       if (!response) return;
@@ -110,6 +110,7 @@
   window.showToast = showToast;
   window.refreshCartBadge = refreshCartBadge;
   window.updateGlobalCartCount = updateGlobalCartCount;
+  window.escapeHtml = escapeHtml;
 
   document.addEventListener('DOMContentLoaded', () => {
     refreshCartBadge();

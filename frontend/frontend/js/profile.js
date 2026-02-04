@@ -52,6 +52,11 @@
 
   let paymentTypesById = new Map();
 
+  const esc = (value) => {
+    if (typeof window.escapeHtml === 'function') return window.escapeHtml(value);
+    return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  };
+
   function showToast(message, type = 'info') {
     if (typeof window.showToast === 'function') return window.showToast(message, type);
     alert(message);
@@ -322,17 +327,24 @@
       const li = document.createElement('li');
       li.className = 'list-group-item border-0 px-0';
       const isDefault = !!addr.is_default;
+
+      const safeId = esc(String(addr.id ?? ''));
+      const safeLine1 = esc(addr.address_line1 || 'عنوان');
+      const safeCity = esc(addr.city || '');
+      const safeRegion = esc(addr.region || '');
+      const safePostal = esc(addr.postal_code || '');
+
       li.innerHTML = `
         <div class="card border-0 shadow-sm p-3" style="border-radius:16px;">
           <div class="d-flex justify-content-between align-items-start">
             <div>
-              <div class="fw-bold" style="color:#0f172a;">${addr.address_line1 || 'عنوان'}</div>
-              <div class="text-muted small">${addr.city || ''}${addr.region ? ' - ' + addr.region : ''}</div>
-              <div class="text-muted small">${addr.postal_code || ''}</div>
+              <div class="fw-bold" style="color:#0f172a;">${safeLine1}</div>
+              <div class="text-muted small">${safeCity}${safeRegion ? ' - ' + safeRegion : ''}</div>
+              <div class="text-muted small">${safePostal}</div>
               <div class="mt-2 d-flex flex-wrap gap-2">
-                <button type="button" class="btn btn-sm btn-outline-info rounded-pill" data-action="addr-default" data-id="${addr.id}" ${isDefault ? 'disabled' : ''} style="border-color:#00BCD4;color:#00BCD4;">${isDefault ? 'افتراضي' : 'تعيين كافتراضي'}</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-action="addr-edit" data-id="${addr.id}">تعديل</button>
-                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" data-action="addr-delete" data-id="${addr.id}">حذف</button>
+                <button type="button" class="btn btn-sm btn-outline-info rounded-pill" data-action="addr-default" data-id="${safeId}" ${isDefault ? 'disabled' : ''} style="border-color:#00BCD4;color:#00BCD4;">${isDefault ? 'افتراضي' : 'تعيين كافتراضي'}</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-action="addr-edit" data-id="${safeId}">تعديل</button>
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" data-action="addr-delete" data-id="${safeId}">حذف</button>
               </div>
             </div>
             <span class="badge rounded-pill" style="background:${isDefault ? 'rgba(34,197,94,.12)' : 'rgba(0,188,212,.12)'}; color:${isDefault ? '#16a34a' : '#00BCD4'}; border:1px solid ${isDefault ? 'rgba(34,197,94,.35)' : 'rgba(0,188,212,.35)'};">${isDefault ? 'افتراضي' : 'شحن'}</span>
@@ -406,19 +418,27 @@
       const masked = maskAccount(p.account_number);
       const expiry = p.expiry_date || '';
       const isDefault = !!p.is_default;
+
+      const safeId = esc(String(p.id ?? ''));
+      const safeTypeName = esc(typeName);
+      const safeProvider = esc(provider);
+      const safeMasked = esc(masked);
+      const safeExpiry = esc(expiry);
+      const safeStatus = esc(p.payment_status || 'Success');
+
       li.innerHTML = `
         <div class="card border-0 shadow-sm p-3" style="border-radius:16px;">
           <div class="d-flex justify-content-between align-items-center">
             <div>
-              <div class="fw-bold" style="color:#0f172a;">${typeName}${isDefault ? ' <span class="badge ms-1" style="background:#00BCD4;color:#0f172a;">افتراضي</span>' : ''}</div>
-              <div class="text-muted small">${provider} • ${masked} • ${expiry}</div>
+              <div class="fw-bold" style="color:#0f172a;">${safeTypeName}${isDefault ? ' <span class="badge ms-1" style="background:#00BCD4;color:#0f172a;">افتراضي</span>' : ''}</div>
+              <div class="text-muted small">${safeProvider} • ${safeMasked} • ${safeExpiry}</div>
               <div class="mt-2 d-flex flex-wrap gap-2">
-                <button type="button" class="btn btn-sm btn-outline-info rounded-pill" data-action="pm-default" data-id="${p.id}" ${isDefault ? 'disabled' : ''} style="border-color:#00BCD4;color:#00BCD4;">${isDefault ? 'افتراضي' : 'تعيين كافتراضي'}</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-action="pm-edit" data-id="${p.id}">تعديل</button>
-                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" data-action="pm-delete" data-id="${p.id}">حذف</button>
+                <button type="button" class="btn btn-sm btn-outline-info rounded-pill" data-action="pm-default" data-id="${safeId}" ${isDefault ? 'disabled' : ''} style="border-color:#00BCD4;color:#00BCD4;">${isDefault ? 'افتراضي' : 'تعيين كافتراضي'}</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-action="pm-edit" data-id="${safeId}">تعديل</button>
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" data-action="pm-delete" data-id="${safeId}">حذف</button>
               </div>
             </div>
-            <span class="badge rounded-pill" style="background:rgba(34,197,94,.12); color:#16a34a; border:1px solid rgba(34,197,94,.35);">${p.payment_status || 'Success'}</span>
+            <span class="badge rounded-pill" style="background:rgba(34,197,94,.12); color:#16a34a; border:1px solid rgba(34,197,94,.35);">${safeStatus}</span>
           </div>
         </div>
       `;

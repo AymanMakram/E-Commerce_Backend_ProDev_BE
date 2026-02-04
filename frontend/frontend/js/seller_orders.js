@@ -22,6 +22,11 @@
   let cachedStatuses = null;
   let loadedTotal = 0;
 
+  const esc = (value) => {
+    if (typeof window.escapeHtml === 'function') return window.escapeHtml(value);
+    return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  };
+
   function showToast(message, type = 'info') {
     if (typeof window.showToast === 'function') return window.showToast(message, type);
     alert(message);
@@ -57,7 +62,7 @@
     const key = s.toLowerCase();
 
     const pill = (text, bg, fg, border) =>
-      `<span class="badge rounded-pill" style="background:${bg}; color:${fg}; border:1px solid ${border};">${text}</span>`;
+      `<span class="badge rounded-pill" style="background:${bg}; color:${fg}; border:1px solid ${border};">${esc(text)}</span>`;
 
     if (!s || key === 'pending') return pill('قيد الانتظار', 'rgba(245,158,11,.12)', '#b45309', 'rgba(245,158,11,.35)');
     if (key === 'success' || key === 'paid') return pill('تم الدفع', 'rgba(34,197,94,.12)', '#16a34a', 'rgba(34,197,94,.35)');
@@ -101,7 +106,7 @@
 
   function renderError(message) {
     if (!root) return;
-    root.innerHTML = `<div class="alert alert-danger">${message}</div>`;
+    root.innerHTML = `<div class="alert alert-danger">${esc(message)}</div>`;
   }
 
   function renderPagination({ next }, onLoadMore) {
@@ -149,7 +154,7 @@
     const options = statuses
       .map((s) => {
         const selected = String(s.id) === currentId ? 'selected' : '';
-        return `<option value="${s.id}" ${selected}>${s.status}</option>`;
+        return `<option value="${esc(s.id)}" ${selected}>${esc(s.status)}</option>`;
       })
       .join('');
 
@@ -165,7 +170,7 @@
     const options = statuses
       .map((s) => {
         const selected = String(s.id) === currentId ? 'selected' : '';
-        return `<option value="${s.id}" ${selected}>${s.status}</option>`;
+        return `<option value="${esc(s.id)}" ${selected}>${esc(s.status)}</option>`;
       })
       .join('');
 
@@ -194,11 +199,11 @@
 
         return `
           <tr>
-            <td>${l.product_name || ''}</td>
-            <td><span class="badge bg-secondary">${l.sku || ''}</span></td>
+            <td>${esc(l.product_name || '')}</td>
+            <td><span class="badge bg-secondary">${esc(l.sku || '')}</span></td>
             <td class="fw-bold">x${Number(l.qty ?? 0)}</td>
             <td>${money(l.price)} ج.م</td>
-            <td><span class="badge rounded-pill" style="background:rgba(148,163,184,.18); color:#334155; border:1px solid rgba(148,163,184,.35);">${l.line_status_display || 'Pending'}</span></td>
+            <td><span class="badge rounded-pill" style="background:rgba(148,163,184,.18); color:#334155; border:1px solid rgba(148,163,184,.35);">${esc(l.line_status_display || 'Pending')}</span></td>
             ${actionTd}
           </tr>
         `;
@@ -247,9 +252,9 @@
             <div class="fw-bold" style="color:#0f172a;">طلب رقم #${order.id}</div>
             <div class="text-muted small">تاريخ الطلب: ${formatDate(order.order_date)}</div>
             <div class="text-muted small">حالة الدفع: ${paymentBadge(order.payment_status)}</div>
-            ${shipShort ? `<div class="text-muted small">الشحن: <span class="fw-bold">${shipShort}</span></div>` : ''}
-            ${customerUsername ? `<div class="text-muted small">العميل: <span class="fw-bold">${customerUsername}</span></div>` : ''}
-            ${customerPhone ? `<div class="text-muted small">هاتف العميل: <span class="fw-bold">${customerPhone}</span></div>` : ''}
+            ${shipShort ? `<div class="text-muted small">الشحن: <span class="fw-bold">${esc(shipShort)}</span></div>` : ''}
+            ${customerUsername ? `<div class="text-muted small">العميل: <span class="fw-bold">${esc(customerUsername)}</span></div>` : ''}
+            ${customerPhone ? `<div class="text-muted small">هاتف العميل: <span class="fw-bold">${esc(customerPhone)}</span></div>` : ''}
           </div>
           <div class="text-end">
             <div class="text-muted small">الإجمالي</div>
@@ -263,17 +268,17 @@
         <div class="row g-2 mt-3">
           <div class="col-12 col-md-4">
             <label class="form-label small text-muted mb-1">شركة الشحن</label>
-            <input class="form-control form-control-sm" placeholder="مثال: Aramex" value="${carrier}" data-action="ship-carrier" data-order-id="${order.id}" />
+            <input class="form-control form-control-sm" placeholder="مثال: Aramex" value="${esc(carrier)}" data-action="ship-carrier" data-order-id="${order.id}" />
           </div>
           <div class="col-12 col-md-5">
             <label class="form-label small text-muted mb-1">رقم التتبع</label>
-            <input class="form-control form-control-sm" placeholder="Tracking" value="${tracking}" data-action="ship-tracking" data-order-id="${order.id}" />
+            <input class="form-control form-control-sm" placeholder="Tracking" value="${esc(tracking)}" data-action="ship-tracking" data-order-id="${order.id}" />
           </div>
           <div class="col-12 col-md-3">
             <label class="form-label small text-muted mb-1">الحالة الزمنية</label>
             <div class="small text-muted" style="line-height:1.35;">
-              ${shippedAt ? `شُحن: <span class="fw-bold">${shippedAt}</span><br/>` : ''}
-              ${deliveredAt ? `سُلّم: <span class="fw-bold">${deliveredAt}</span>` : ''}
+              ${shippedAt ? `شُحن: <span class="fw-bold">${esc(shippedAt)}</span><br/>` : ''}
+              ${deliveredAt ? `سُلّم: <span class="fw-bold">${esc(deliveredAt)}</span>` : ''}
               ${(!shippedAt && !deliveredAt) ? '—' : ''}
             </div>
           </div>
@@ -281,7 +286,7 @@
 
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
           <div>
-            <span class="badge rounded-pill" style="background:rgba(0,188,212,.12); color:#00BCD4; border:1px solid rgba(0,188,212,.35);">${order.status_display || ''}</span>
+            <span class="badge rounded-pill" style="background:rgba(0,188,212,.12); color:#00BCD4; border:1px solid rgba(0,188,212,.35);">${esc(order.status_display || '')}</span>
           </div>
           <div class="d-flex align-items-center gap-2">
             <div class="text-muted small">تغيير الحالة:</div>
