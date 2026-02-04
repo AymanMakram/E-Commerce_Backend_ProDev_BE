@@ -3,11 +3,18 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
     TokenRefreshView,
 )
 from django.contrib.auth import views as auth_views
-from .views import RegisterView, UserProfileViewSet, login_page, register_page, country_list, payment_type_list
+from .views import (
+    RegisterView,
+    SessionTokenObtainPairView,
+    UserProfileViewSet,
+    country_list,
+    login_page,
+    payment_type_list,
+    register_page,
+)
 
 router = DefaultRouter()
 router.register(r'profile', UserProfileViewSet, basename='user-profile')
@@ -27,7 +34,7 @@ urlpatterns = [
     # 2. نظام الدخول - هذا هو المسار الذي يجب أن ينادي عليه الـ JS
     # إذا كان هذا الملف مستدعى في الرئيسي تحت 'api/accounts/'
     # سيكون المسار الكامل: /api/accounts/login/
-    path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('login/', SessionTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # Password reset (HTML) - uses console email backend in DEBUG

@@ -38,6 +38,20 @@
     return n.toFixed(2);
   }
 
+  function paymentBadge(raw) {
+    const s = String(raw || '').trim();
+    const key = s.toLowerCase();
+
+    const pill = (text, bg, fg, border) =>
+      `<span class="badge rounded-pill" style="background:${bg}; color:${fg}; border:1px solid ${border};">${text}</span>`;
+
+    if (!s || key === 'pending') return pill('قيد الانتظار', 'rgba(245,158,11,.12)', '#b45309', 'rgba(245,158,11,.35)');
+    if (key === 'success' || key === 'paid') return pill('تم الدفع', 'rgba(34,197,94,.12)', '#16a34a', 'rgba(34,197,94,.35)');
+    if (key === 'cancelled' || key === 'canceled' || key === 'failed') return pill('ملغي', 'rgba(239,68,68,.12)', '#b91c1c', 'rgba(239,68,68,.35)');
+    if (key === 'refunded') return pill('تم الاسترجاع', 'rgba(99,102,241,.12)', '#4338ca', 'rgba(99,102,241,.35)');
+    return pill(s, 'rgba(148,163,184,.18)', '#334155', 'rgba(148,163,184,.35)');
+  }
+
   function renderLoading() {
     if (!detailsEl) return;
     detailsEl.innerHTML = `
@@ -85,7 +99,7 @@
             <div class="fw-bold" style="color:#0f172a;">طلب رقم #${order.id}</div>
             <div class="text-muted small">تاريخ الطلب: ${formatDate(order.order_date)}</div>
             <div class="mt-2">الحالة الحالية: <span class="fw-bold" style="color:#00BCD4;">${order.status_display || ''}</span></div>
-            <div class="text-muted small">حالة الدفع: <span class="fw-bold">${order.payment_status || 'Pending'}</span></div>
+            <div class="text-muted small">حالة الدفع: ${paymentBadge(order.payment_status)}</div>
           </div>
           <div class="text-end">
             <div class="text-muted small">الإجمالي</div>

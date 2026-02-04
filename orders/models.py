@@ -51,11 +51,17 @@ class OrderLine(models.Model):
     qty = models.IntegerField(default=1)
     price = models.DecimalField(max_digits=10, decimal_places=2)
 
+    # Per-line fulfillment status (important for multi-vendor orders).
+    line_status = models.ForeignKey(OrderStatus, on_delete=models.SET_NULL, null=True, blank=True, related_name='order_lines')
+    line_shipped_at = models.DateTimeField(null=True, blank=True)
+    line_delivered_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         verbose_name = "Order Item"
         verbose_name_plural = "Order Items"
         indexes = [
             models.Index(fields=['order', 'product_item']),
+            models.Index(fields=['order', 'line_status']),
         ]
 
     def __str__(self):

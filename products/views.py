@@ -45,7 +45,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category', 'seller'] # أضفنا الفلترة حسب البائع أيضاً
     search_fields = ['name', 'description']
-    ordering_fields = ['name', 'price'] # أضفنا الترتيب حسب السعر لو احتجته
+    # Product has no direct `price` field (price is on ProductItem). Keep ordering safe.
+    ordering_fields = ['id', 'name']
 
     # إضافة الصلاحيات
     permission_classes = [IsSellerOrReadOnly]
@@ -99,8 +100,8 @@ class ProductItemViewSet(viewsets.ModelViewSet):
         if self.request.user.is_authenticated and getattr(self.request.user, 'user_type', None) == 'seller':
             return qs.filter(product__seller=self.request.user)
 
-        # Non-seller: allow read-only discovery but never leak draft items if you later add those fields.
-        return qs
+        # Public/customers should only see SKUs belonging to published products.
+        return qs.filter(product__is_published=True)
 
     def create(self, request, *args, **kwargs):
         if not (request.user.is_authenticated and getattr(request.user, 'user_type', None) == 'seller'):

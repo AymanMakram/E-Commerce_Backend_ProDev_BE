@@ -5,6 +5,38 @@ from rest_framework import serializers
 from .models import ProductCategory, Product, ProductItem, Variation, VariationOption, ProductConfiguration
 
 
+def _image_value_to_url(value, *, request=None):
+    """Return a usable URL for an ImageField value.
+
+    Our seeders may store absolute URLs (e.g. https://picsum.photos/...).
+    Django's ImageField `url` property will prefix MEDIA_URL in that case,
+    producing broken paths like /media/https%3A/... .
+
+    This helper returns absolute URLs as-is and uses `.url` for real media files.
+    """
+
+    if not value:
+        return None
+
+    # `value` is typically an ImageFieldFile; its string form is the DB value.
+    raw = str(value)
+    if raw.startswith('http://') or raw.startswith('https://'):
+        return raw
+
+    try:
+        url = value.url
+    except Exception:
+        return raw
+
+    if request is not None:
+        try:
+            return request.build_absolute_uri(url)
+        except Exception:
+            return url
+
+    return url
+
+
 class VariationSerializer(serializers.ModelSerializer):
     """Variation definition (e.g., Color, Size) tied to a category."""
 
@@ -41,11 +73,16 @@ class ProductItemSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
+    product_image = serializers.SerializerMethodField()
     options = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductItem
         fields = ['id', 'product', 'sku', 'qty_in_stock', 'price', 'product_image', 'options']
+
+    def get_product_image(self, obj):
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        return _image_value_to_url(obj.product_image, request=request)
 
     def get_options(self, obj):
         # Prefer prefetched reverse relation to avoid N+1 queries.
@@ -63,6 +100,7 @@ class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.ReadOnlyField(source='category.category_name')
     # إضافة اسم البائع للقراءة فقط لتحسين عرض البيانات
     seller_name = serializers.ReadOnlyField(source='seller.username')
+    product_image = serializers.SerializerMethodField()
     items = ProductItemSerializer(many=True, read_only=True)
 
     class Meta:
@@ -77,3 +115,7 @@ class ProductSerializer(serializers.ModelSerializer):
         # أهم تعديل: جعل حقل الـ seller للقراءة فقط 
         # لكي يعتمد الـ API على المستخدم المسجل حالياً ولا يطلبه من المستخدم
         read_only_fields = ['seller']
+
+    def get_product_image(self, obj):
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        return _image_value_to_url(obj.product_image, request=request)

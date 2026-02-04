@@ -18,6 +18,8 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from rest_framework_simplejwt.views import TokenObtainPairView
+
 from .models import Country, PaymentType, SellerProfile, UserAddress, UserPaymentMethod
 from .serializers import (
     AddressSerializer,
@@ -47,6 +49,26 @@ def login_page(request):
         else:
             return render(request, 'auth/login.html', {'login_error': 'بيانات الدخول غير صحيحة'})
     return render(request, 'auth/login.html')
+
+
+class SessionTokenObtainPairView(TokenObtainPairView):
+    """JWT login that also establishes a Django session.
+
+    The frontend navigates to server-rendered pages (e.g. `/seller/`) that are
+    protected with `login_required`, which relies on Django's session auth.
+    SimpleJWT's default `TokenObtainPairView` does not create a session.
+    """
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = getattr(serializer, 'user', None)
+        if user is not None and getattr(user, 'is_active', True):
+            # DRF wraps the underlying Django HttpRequest at request._request.
+            login(request._request, user)
+
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 def register_page(request):
     """Render register page (HTML)."""

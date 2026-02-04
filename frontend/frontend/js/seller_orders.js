@@ -52,6 +52,20 @@
     return n.toFixed(2);
   }
 
+  function paymentBadge(raw) {
+    const s = String(raw || '').trim();
+    const key = s.toLowerCase();
+
+    const pill = (text, bg, fg, border) =>
+      `<span class="badge rounded-pill" style="background:${bg}; color:${fg}; border:1px solid ${border};">${text}</span>`;
+
+    if (!s || key === 'pending') return pill('قيد الانتظار', 'rgba(245,158,11,.12)', '#b45309', 'rgba(245,158,11,.35)');
+    if (key === 'success' || key === 'paid') return pill('تم الدفع', 'rgba(34,197,94,.12)', '#16a34a', 'rgba(34,197,94,.35)');
+    if (key === 'cancelled' || key === 'canceled' || key === 'failed') return pill('ملغي', 'rgba(239,68,68,.12)', '#b91c1c', 'rgba(239,68,68,.35)');
+    if (key === 'refunded') return pill('تم الاسترجاع', 'rgba(99,102,241,.12)', '#4338ca', 'rgba(99,102,241,.35)');
+    return pill(s, 'rgba(148,163,184,.18)', '#334155', 'rgba(148,163,184,.35)');
+  }
+
   function getPaginatedResults(data) {
     if (!data) return { results: [], next: null, previous: null, count: 0 };
     if (Array.isArray(data)) return { results: data, next: null, previous: null, count: data.length };
@@ -131,6 +145,7 @@
 
   function statusSelectHtml(order, statuses) {
     const currentId = String(order.order_status_id ?? '');
+    const canUpdate = !!order?.can_update_status;
     const options = statuses
       .map((s) => {
         const selected = String(s.id) === currentId ? 'selected' : '';
@@ -139,15 +154,56 @@
       .join('');
 
     return `
-      <select class="form-select form-select-sm w-auto" data-action="status-select" data-order-id="${order.id}">
+      <select class="form-select form-select-sm w-auto" data-action="status-select" data-order-id="${order.id}" ${canUpdate ? '' : 'disabled'}>
         ${options}
       </select>
     `;
   }
 
-  function linesHtml(lines) {
+  function lineStatusSelectHtml(orderId, line, statuses, disabled) {
+    const currentId = String(line?.line_status_id ?? '');
+    const options = statuses
+      .map((s) => {
+        const selected = String(s.id) === currentId ? 'selected' : '';
+        return `<option value="${s.id}" ${selected}>${s.status}</option>`;
+      })
+      .join('');
+
+    return `
+      <div class="d-flex align-items-center gap-2">
+        <select class="form-select form-select-sm" style="max-width:180px" data-action="line-status-select" data-line-id="${line.id}" ${disabled ? 'disabled' : ''}>
+          ${options}
+        </select>
+        <button class="btn btn-sm btn-outline-info rounded-pill" style="border-color:#00BCD4;color:#00BCD4;" data-action="line-status-save" data-line-id="${line.id}" data-order-id="${orderId}" ${disabled ? 'disabled' : ''}>تحديث</button>
+      </div>
+    `;
+  }
+
+  function linesHtml(orderId, lines, statuses, showActions) {
     const list = Array.isArray(lines) ? lines : [];
     if (!list.length) return '<div class="text-muted small">لا توجد عناصر.</div>';
+
+    const actionTh = showActions ? '<th class="text-end">إجراء</th>' : '';
+
+    const body = list
+      .map((l) => {
+        const canUpdateLine = !!l?.line_can_update_status;
+        const actionTd = showActions
+          ? `<td class="text-end">${lineStatusSelectHtml(orderId, l, statuses, !canUpdateLine)}</td>`
+          : '';
+
+        return `
+          <tr>
+            <td>${l.product_name || ''}</td>
+            <td><span class="badge bg-secondary">${l.sku || ''}</span></td>
+            <td class="fw-bold">x${Number(l.qty ?? 0)}</td>
+            <td>${money(l.price)} ج.م</td>
+            <td><span class="badge rounded-pill" style="background:rgba(148,163,184,.18); color:#334155; border:1px solid rgba(148,163,184,.35);">${l.line_status_display || 'Pending'}</span></td>
+            ${actionTd}
+          </tr>
+        `;
+      })
+      .join('');
 
     return `
       <div class="table-responsive mt-2">
@@ -158,20 +214,12 @@
               <th>SKU</th>
               <th>الكمية</th>
               <th>السعر</th>
+              <th>حالة القطعة</th>
+              ${actionTh}
             </tr>
           </thead>
           <tbody>
-            ${list
-              .map(
-                (l) => `
-              <tr>
-                <td>${l.product_name || ''}</td>
-                <td><span class="badge bg-secondary">${l.sku || ''}</span></td>
-                <td class="fw-bold">x${Number(l.qty ?? 0)}</td>
-                <td>${money(l.price)} ج.م</td>
-              </tr>`
-              )
-              .join('')}
+            ${body}
           </tbody>
         </table>
       </div>
@@ -179,6 +227,9 @@
   }
 
   function orderCardHtml(order, statuses) {
+    const canUpdate = !!order?.can_update_status;
+    const isMultiVendor = !canUpdate;
+    const otherCount = Number(order?.other_sellers_lines_count ?? 0) || 0;
     const addr = order?.shipping_address_details || null;
     const shipShort = addr ? [addr.city, addr.region].filter(Boolean).join('، ') : '';
     const customerPhone = order?.customer_phone_number || '';
@@ -195,7 +246,7 @@
           <div>
             <div class="fw-bold" style="color:#0f172a;">طلب رقم #${order.id}</div>
             <div class="text-muted small">تاريخ الطلب: ${formatDate(order.order_date)}</div>
-            <div class="text-muted small">حالة الدفع: <span class="fw-bold">${order.payment_status || 'Pending'}</span></div>
+            <div class="text-muted small">حالة الدفع: ${paymentBadge(order.payment_status)}</div>
             ${shipShort ? `<div class="text-muted small">الشحن: <span class="fw-bold">${shipShort}</span></div>` : ''}
             ${customerUsername ? `<div class="text-muted small">العميل: <span class="fw-bold">${customerUsername}</span></div>` : ''}
             ${customerPhone ? `<div class="text-muted small">هاتف العميل: <span class="fw-bold">${customerPhone}</span></div>` : ''}
@@ -235,11 +286,18 @@
           <div class="d-flex align-items-center gap-2">
             <div class="text-muted small">تغيير الحالة:</div>
             ${statusSelectHtml(order, statuses)}
-            <button class="btn btn-sm btn-info text-white rounded-pill" data-action="status-save" data-order-id="${order.id}">تحديث</button>
+            <button class="btn btn-sm btn-info text-white rounded-pill" data-action="status-save" data-order-id="${order.id}" ${canUpdate ? '' : 'disabled'}>تحديث</button>
           </div>
         </div>
 
-        ${linesHtml(order.lines)}
+        ${canUpdate ? '' : `
+          <div class="mt-2 small text-muted">
+            هذا طلب متعدد البائعين — لا يمكن تغيير حالة الطلب العامة من هنا.
+            ${otherCount > 0 ? ` <span class="fw-bold">(${otherCount} عناصر لبائعين آخرين مخفية)</span>` : ''}
+          </div>
+        `}
+
+        ${linesHtml(order.id, order.lines, statuses, isMultiVendor)}
       </div>
     `;
   }
@@ -384,6 +442,22 @@
     return data;
   }
 
+  async function updateLineStatus(orderId, lineId, statusId) {
+    const res = await window.request(`/api/orders/${orderId}/set-line-status/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ line_id: lineId, line_status: statusId }),
+    });
+    if (!res) return null;
+    const data = await readJsonSafe(res);
+    if (!res.ok) {
+      const msg = (data && (data.detail || data.error)) || 'فشل تحديث حالة القطعة.';
+      showToast(msg, 'danger');
+      return null;
+    }
+    showToast('تم تحديث حالة القطعة.', 'success');
+    return data;
+  }
+
   function bindDelegatedActions() {
     if (!root) return;
     if (root.dataset.bound === '1') return;
@@ -392,6 +466,7 @@
     root.addEventListener('click', async (e) => {
       const btn = e.target?.closest?.('[data-action="status-save"]');
       if (!btn) return;
+      if (btn.disabled) return;
       const orderId = btn.getAttribute('data-order-id');
       const select = root.querySelector(`[data-action="status-select"][data-order-id="${orderId}"]`);
       const statusId = select?.value;
@@ -410,6 +485,32 @@
         const badge = card?.querySelector('.badge');
         const selectedLabel = select?.selectedOptions?.[0]?.textContent;
         if (badge && selectedLabel) badge.textContent = selectedLabel;
+      }
+    });
+
+    root.addEventListener('click', async (e) => {
+      const btn = e.target?.closest?.('[data-action="line-status-save"]');
+      if (!btn) return;
+      if (btn.disabled) return;
+
+      const orderId = btn.getAttribute('data-order-id');
+      const lineId = btn.getAttribute('data-line-id');
+      const select = root.querySelector(`[data-action="line-status-select"][data-line-id="${lineId}"]`);
+      const statusId = select?.value;
+      if (!orderId || !lineId || !statusId) return;
+
+      btn.disabled = true;
+      const prev = btn.innerHTML;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span> تحديث`;
+      try {
+        const updated = await updateLineStatus(orderId, lineId, statusId);
+        if (updated) {
+          currentBaseUrl = buildUrlWithFilters('/api/orders/seller-orders/');
+          await loadSellerOrders(currentBaseUrl);
+        }
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = prev;
       }
     });
   }

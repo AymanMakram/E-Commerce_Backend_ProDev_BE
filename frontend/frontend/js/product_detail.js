@@ -16,6 +16,11 @@
     mainImage: DEFAULT_IMAGE,
   };
 
+  function toInt(value, fallback = 0) {
+    const n = Number.parseInt(String(value ?? ''), 10);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
   function showToast(message, type = 'info') {
     if (typeof window.showToast === 'function') return window.showToast(message, type);
     alert(message);
@@ -71,6 +76,123 @@
     return out;
   }
 
+  function normalizeSkuItems(items) {
+    const list = Array.isArray(items) ? items : [];
+    return list.map((item) => {
+      const optMap = {};
+      (item?.options || []).forEach((o) => {
+        const vn = String(o?.variation_name || '').trim();
+        const vv = String(o?.value || '').trim();
+        if (!vn || !vv) return;
+        optMap[vn] = vv;
+      });
+      return {
+        ...item,
+        __optMap: optMap,
+        __stock: toInt(item?.qty_in_stock, 0),
+      };
+    });
+  }
+
+  function itemMatchesSelections(item, selectedOptions, variationNames, requireAll = false) {
+    if (!item) return false;
+    const names = Array.isArray(variationNames) ? variationNames : [];
+    const sel = selectedOptions || {};
+    if (requireAll) {
+      for (const vn of names) {
+        if (!sel[vn]) return false;
+      }
+    }
+    return names.every((vn) => {
+      const desired = sel[vn];
+      if (!desired) return true;
+      return String(item.__optMap?.[vn] || '') === String(desired);
+    });
+  }
+
+  function pickBestItem(items) {
+    const list = Array.isArray(items) ? items : [];
+    return list.find((it) => (it?.__stock ?? 0) > 0) || list[0] || null;
+  }
+
+  function getVariationSelects() {
+    const map = new Map();
+    document.querySelectorAll('select[data-variation]')?.forEach((sel) => {
+      const vn = sel.getAttribute('data-variation') || '';
+      if (vn) map.set(vn, sel);
+    });
+    return map;
+  }
+
+  function syncVariationSelectValues(variationNames) {
+    const selects = getVariationSelects();
+    (variationNames || []).forEach((vn) => {
+      const sel = selects.get(vn);
+      if (!sel) return;
+      const value = state.selectedOptions?.[vn] || '';
+      sel.value = value;
+    });
+  }
+
+  function updateVariationAlert(message, type = 'warning') {
+    const el = document.getElementById('variation-alert');
+    if (!el) return;
+    const msg = String(message || '').trim();
+    if (!msg) {
+      el.className = 'alert d-none mt-3 mb-0';
+      el.textContent = '';
+      return;
+    }
+    el.className = `alert alert-${type} mt-3 mb-0`;
+    el.textContent = msg;
+  }
+
+  function refreshOptionAvailability(items, variationNames) {
+    const names = Array.isArray(variationNames) ? variationNames : [];
+    const selects = getVariationSelects();
+    if (!names.length || !selects.size) return;
+
+    names.forEach((vn) => {
+      const sel = selects.get(vn);
+      if (!sel) return;
+
+      const currentOthers = { ...(state.selectedOptions || {}) };
+      // We'll probe each candidate value for this variation.
+      Array.from(sel.options || []).forEach((opt) => {
+        const val = String(opt.value || '');
+
+        // Keep placeholder always enabled.
+        if (!val) {
+          opt.disabled = false;
+          if (!opt.dataset.baseLabel) opt.dataset.baseLabel = opt.textContent || 'اختر';
+          opt.textContent = opt.dataset.baseLabel;
+          return;
+        }
+
+        if (!opt.dataset.baseLabel) opt.dataset.baseLabel = opt.textContent || val;
+
+        const probe = { ...currentOthers, [vn]: val };
+        const candidates = (Array.isArray(items) ? items : []).filter((it) => itemMatchesSelections(it, probe, names, false));
+
+        if (!candidates.length) {
+          opt.disabled = true;
+          opt.textContent = `${opt.dataset.baseLabel} (غير متاح)`;
+          return;
+        }
+
+        const anyInStock = candidates.some((it) => (it?.__stock ?? 0) > 0);
+        if (!anyInStock) {
+          opt.disabled = true;
+          opt.textContent = `${opt.dataset.baseLabel} (نفذ)`;
+          return;
+        }
+
+        opt.disabled = false;
+        opt.textContent = opt.dataset.baseLabel;
+      });
+    });
+  }
+
   function itemMatchesSelectedOptions(item, selectedOptions) {
     const entries = Object.entries(selectedOptions || {});
     if (!entries.length) return true;
@@ -102,11 +224,26 @@
     const addBtn = document.getElementById('product-add');
     const qtyInput = document.getElementById('product-qty');
 
+    if (!item) {
+      if (priceEl) priceEl.textContent = '—';
+      if (skuEl) skuEl.textContent = '—';
+      if (stockEl) {
+        stockEl.className = 'badge bg-secondary';
+        stockEl.textContent = '—';
+      }
+      if (qtyInput) {
+        qtyInput.max = '1';
+        if (Number(qtyInput.value || 1) < 1) qtyInput.value = '1';
+      }
+      if (addBtn) addBtn.disabled = true;
+      return;
+    }
+
     const price = Number(item?.price || 0);
-    const stock = Number(item?.qty_in_stock ?? 0);
+    const stock = Number(item?.qty_in_stock ?? item?.__stock ?? 0);
     const sku = item?.sku || '—';
 
-    if (priceEl) priceEl.textContent = price.toFixed(2) + ' ج.م';
+    if (priceEl) priceEl.textContent = (Number.isFinite(price) ? price : 0).toFixed(2) + ' ج.م';
     if (skuEl) skuEl.textContent = sku;
 
     if (stockEl) {
@@ -124,9 +261,7 @@
       if (Number(qtyInput.value || 1) < 1) qtyInput.value = '1';
     }
 
-    if (addBtn) {
-      addBtn.disabled = !(Number.isFinite(stock) && stock > 0);
-    }
+    if (addBtn) addBtn.disabled = !(Number.isFinite(stock) && stock > 0);
   }
 
   function render(product) {
@@ -137,7 +272,8 @@
     const seller = escapeHtml(product?.seller_name || '');
     const category = escapeHtml(product?.category_name || '');
 
-    const items = Array.isArray(product?.items) ? product.items : [];
+    const rawItems = Array.isArray(product?.items) ? product.items : [];
+    const items = normalizeSkuItems(rawItems);
     const optionsMap = buildOptionsMap(items);
 
     const rawImages = [product?.product_image, ...items.map((i) => i.product_image)].map(normalizeImageUrl);
@@ -145,16 +281,21 @@
     const main = images[0] || DEFAULT_IMAGE;
     state.mainImage = main;
 
-    const hasVariations = Object.keys(optionsMap).length > 0;
+    const variationNames = Object.keys(optionsMap).sort((a, b) => String(a).localeCompare(String(b)));
+    const hasVariations = variationNames.length > 0;
 
     const optionControls = hasVariations
-      ? Object.entries(optionsMap).map(([varName, values]) => {
-          const opts = values.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+      ? variationNames.map((varName) => {
+          const values = optionsMap[varName] || [];
+          const baseOpts = values.map((v) => `<option value="${escapeHtml(v)}" data-base-label="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
           const safeId = 'opt-' + btoa(unescape(encodeURIComponent(varName))).replace(/=+/g, '');
           return `
             <div class="col-md-6">
               <label class="form-label fw-bold">${escapeHtml(varName)}</label>
-              <select class="form-select" id="${safeId}" data-variation="${escapeHtml(varName)}">${opts}</select>
+              <select class="form-select" id="${safeId}" data-variation="${escapeHtml(varName)}">
+                <option value="" data-base-label="اختر" >اختر</option>
+                ${baseOpts}
+              </select>
             </div>`;
         }).join('')
       : `
@@ -198,6 +339,7 @@
 
             <div class="mt-3">
               <div class="row g-3">${optionControls}</div>
+              <div id="variation-alert" class="alert d-none mt-3 mb-0" role="alert"></div>
             </div>
 
             <div class="d-flex align-items-center gap-3 mt-4">
@@ -251,23 +393,65 @@
     // Initialize selection
     state.selectedOptions = {};
     if (hasVariations) {
-      Object.entries(optionsMap).forEach(([varName, values]) => {
-        if (values.length) state.selectedOptions[varName] = values[0];
+      // Prefer an in-stock SKU for initial selection.
+      const initialItem = pickBestItem(items);
+      state.selectedItem = initialItem;
+      variationNames.forEach((vn) => {
+        state.selectedOptions[vn] = String(initialItem?.__optMap?.[vn] || '');
       });
-      state.selectedItem = findBestMatchingItem(items, state.selectedOptions);
+
+      syncVariationSelectValues(variationNames);
+      refreshOptionAvailability(items, variationNames);
+
+      updateVariationAlert('', 'warning');
 
       document.querySelectorAll('select[data-variation]')?.forEach((sel) => {
         const varName = sel.getAttribute('data-variation');
-        sel.value = state.selectedOptions[varName] || sel.value;
         sel.addEventListener('change', () => {
-          state.selectedOptions[varName] = sel.value;
-          state.selectedItem = findBestMatchingItem(items, state.selectedOptions);
+          const newValue = String(sel.value || '');
+          state.selectedOptions[varName] = newValue;
+
+          // 1) Try exact match with all selected variations.
+          const exact = (variationNames.every((vn) => state.selectedOptions[vn]))
+            ? items.find((it) => itemMatchesSelections(it, state.selectedOptions, variationNames, true))
+            : null;
+
+          if (exact) {
+            state.selectedItem = exact;
+            updateVariationAlert('', 'warning');
+          } else {
+            // 2) If exact match fails, pick a SKU that matches the changed option and is in stock.
+            const candidates = items.filter((it) => {
+              if (!newValue) return true;
+              return String(it?.__optMap?.[varName] || '') === newValue;
+            }).filter((it) => itemMatchesSelections(it, state.selectedOptions, variationNames, false));
+
+            const best = pickBestItem(candidates.length ? candidates : items.filter((it) => {
+              if (!newValue) return true;
+              return String(it?.__optMap?.[varName] || '') === newValue;
+            }));
+
+            if (best) {
+              state.selectedItem = best;
+              // Snap selects to a real SKU combination.
+              variationNames.forEach((vn) => {
+                state.selectedOptions[vn] = String(best?.__optMap?.[vn] || '');
+              });
+              syncVariationSelectValues(variationNames);
+              updateVariationAlert('تم ضبط الخيارات لأقرب تركيبة متاحة.', 'info');
+            } else {
+              state.selectedItem = null;
+              updateVariationAlert('هذه التركيبة غير متاحة حالياً. جرّب تغيير الخيارات.', 'warning');
+            }
+          }
+
+          refreshOptionAvailability(items, variationNames);
           updateSelectedItemUI();
         });
       });
     } else {
       const skuSel = document.getElementById('sku-select');
-      state.selectedItem = items[0] || null;
+      state.selectedItem = pickBestItem(items);
       if (skuSel) {
         skuSel.value = String(state.selectedItem?.id || skuSel.value);
         skuSel.addEventListener('change', () => {
@@ -291,7 +475,10 @@
           return;
         }
         const item = state.selectedItem;
-        if (!item?.id) return;
+        if (!item?.id) {
+          showToast('يرجى اختيار تركيبة متاحة أولاً.', 'warning');
+          return;
+        }
 
         const qtyInput = document.getElementById('product-qty');
         const desiredQty = Math.max(1, parseInt(qtyInput?.value || '1', 10) || 1);

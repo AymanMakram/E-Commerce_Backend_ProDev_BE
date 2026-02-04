@@ -3,6 +3,28 @@
 from rest_framework import serializers
 from .models import ShoppingCart, ShoppingCartItem
 
+
+def _image_value_to_url(value, *, request=None):
+    if not value:
+        return ''
+
+    raw = str(value)
+    if raw.startswith('http://') or raw.startswith('https://'):
+        return raw
+
+    try:
+        url = value.url
+    except Exception:
+        return raw
+
+    if request is not None:
+        try:
+            return request.build_absolute_uri(url)
+        except Exception:
+            return url
+
+    return url
+
 class ShoppingCartItemSerializer(serializers.ModelSerializer):
     """Serializer for cart line items.
 
@@ -36,6 +58,50 @@ class ShoppingCartItemSerializer(serializers.ModelSerializer):
             'subtotal'
         ]
 
+    def validate(self, attrs):
+        """Validate quantity against SKU stock and published product visibility."""
+        # Determine product_item from incoming attrs or existing instance
+        product_item = attrs.get('product_item')
+        if product_item is None and getattr(self, 'instance', None) is not None:
+            product_item = getattr(self.instance, 'product_item', None)
+
+        # Determine desired quantity (qty is the model field, quantity maps to it)
+        desired_qty = attrs.get('qty')
+        if desired_qty is None and getattr(self, 'instance', None) is not None:
+            desired_qty = getattr(self.instance, 'qty', None)
+
+        try:
+            desired_qty_int = int(desired_qty)
+        except Exception:
+            desired_qty_int = None
+
+        if desired_qty_int is not None and desired_qty_int < 1:
+            raise serializers.ValidationError({'quantity': 'Quantity must be at least 1.'})
+
+        if product_item is None:
+            return attrs
+
+        # Do not allow adding unpublished products to carts.
+        try:
+            product = getattr(product_item, 'product', None)
+            if product is not None and hasattr(product, 'is_published') and not bool(product.is_published):
+                raise serializers.ValidationError({'product_item': 'This product is not available.'})
+        except serializers.ValidationError:
+            raise
+        except Exception:
+            # If we cannot resolve product, don't block here.
+            pass
+
+        if desired_qty_int is not None:
+            try:
+                stock = int(getattr(product_item, 'qty_in_stock', 0) or 0)
+            except Exception:
+                stock = 0
+            if desired_qty_int > stock:
+                raise serializers.ValidationError({'quantity': f'Only {stock} item(s) available in stock.'})
+
+        return attrs
+
     def get_product_name(self, obj):
         try:
             return obj.product_item.product.name
@@ -66,11 +132,7 @@ class ShoppingCartItemSerializer(serializers.ModelSerializer):
 
             if image_field:
                 request = self.context.get('request')
-                if request is not None:
-                    # بناء رابط كامل (Absolute URL) يحل مشكلة الـ 404 تماماً
-                    return request.build_absolute_uri(image_field.url)
-                # في حالة عدم وجود طلب، نرجع المسار النسبي كحل احتياطي
-                return image_field.url
+                return _image_value_to_url(image_field, request=request)
             else:
                 # إرجاع صورة افتراضية إذا لم توجد صورة
                 request = self.context.get('request')
