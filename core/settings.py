@@ -225,15 +225,16 @@ if not DEBUG:
     # If behind a proxy/load balancer (e.g., Nginx), enable this:
     # SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-CSRF_TRUSTED_ORIGINS = [
-    'http://127.0.0.1:8000',
-    'http://localhost:8000',
-]
 
-# Allow configuring trusted origins via env (comma-separated).
+# Get CSRF_TRUSTED_ORIGINS from env or use defaults
 _csrf_env = os.getenv('CSRF_TRUSTED_ORIGINS', '').strip()
 if _csrf_env:
     CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_env.split(',') if o.strip()]
+else:
+    CSRF_TRUSTED_ORIGINS = [
+        'http://127.0.0.1:8000',
+        'http://localhost:8000',
+    ]
 
 # When running behind a reverse proxy (e.g. Nginx in Docker/EC2)
 if os.getenv('SECURE_PROXY_SSL_HEADER', 'False') == 'True':
