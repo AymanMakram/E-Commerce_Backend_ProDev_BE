@@ -76,6 +76,142 @@ Build a high-performance, production-ready commerce foundation tailored for Egyp
 .
 ├─ accounts/                  # Users, profiles, addresses, payment methods, auth
 │  └─ management/commands/    # seed_data management command
+## Production Deployment (AWS EC2 + Docker + GoDaddy Domain + HTTPS)
+
+This project is deployed successfully on an AWS EC2 Ubuntu instance using Docker Compose:
+
+- `web` (Django + Gunicorn)
+- `nginx` (reverse proxy + static/media)
+- `db` (PostgreSQL)
+- `redis` (Celery broker/result)
+- `worker` + `beat` (Celery)
+- `certbot` (Let’s Encrypt renewal sidecar)
+
+### 1) EC2 prerequisites
+
+1. Install Docker + Compose plugin on the EC2 instance.
+2. Ensure your Security Group inbound rules allow:
+   - TCP 22 (SSH)
+   - TCP 80 (HTTP)
+   - TCP 443 (HTTPS)
+
+### 2) Point GoDaddy DNS to EC2
+
+In GoDaddy DNS:
+
+- `A` record: `@` → your EC2 Public IPv4
+- `A` record: `www` → your EC2 Public IPv4 (or CNAME `www` → `@`)
+
+Wait for DNS propagation.
+
+### 3) Configure `.env` for production
+
+Create/update `.env` in the repo root on the server:
+
+```env
+DEBUG=False
+ALLOWED_HOSTS=velostore.shop,www.velostore.shop
+CSRF_TRUSTED_ORIGINS=https://velostore.shop,https://www.velostore.shop
+
+# Important when TLS terminates at Nginx and Django is behind a proxy
+SECURE_PROXY_SSL_HEADER=True
+
+# Cookie + redirect hardening (recommended once HTTPS works)
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
+SECURE_SSL_REDIRECT=True
+```
+
+Keep your existing values for `SECRET_KEY`, `DATABASE_URL`, etc.
+
+### 4) HTTPS with Let’s Encrypt (Certbot webroot)
+
+The Nginx config is set up to:
+
+- Serve `/.well-known/acme-challenge/` from `/var/www/certbot` on port 80
+- Redirect all other HTTP traffic to HTTPS
+- Serve HTTPS on port 443 using certs mounted at `/etc/letsencrypt`
+
+#### Create local cert folders (host bind mounts)
+
+On the EC2 host in the repo root:
+
+```bash
+mkdir -p certbot/conf certbot/www
+```
+
+#### Start the stack (Nginx must be reachable on port 80)
+
+```bash
+docker compose up -d --build web nginx
+```
+
+#### Issue the first certificate (one-time)
+
+Replace the email with any email you control (Gmail is fine):
+
+```bash
+docker compose run --rm certbot certonly \
+  --webroot -w /var/www/certbot \
+  -d velostore.shop -d www.velostore.shop \
+  --email you@gmail.com --agree-tos --no-eff-email
+```
+
+Then restart Nginx:
+
+```bash
+docker compose restart nginx
+```
+
+#### Enable auto-renewal
+
+Start the long-running renewal container (renews every 12 hours):
+
+```bash
+docker compose up -d certbot
+```
+
+### 5) Validate HTTPS
+
+```bash
+curl -I http://velostore.shop
+curl -I https://velostore.shop
+```
+
+### Troubleshooting
+
+**A) `curl https://...` fails but 443 is listening**
+
+- Check AWS Security Group inbound allows TCP 443.
+- Check Ubuntu firewall: `sudo ufw status`.
+
+**B) Cert exists but not in `./certbot/conf` (volume migration)**
+
+If an older deployment stored certs in Docker named volumes, Nginx may mount:
+
+- `velo-store_letsencrypt` → `/etc/letsencrypt`
+
+To migrate certs into host binds (so they persist under `./certbot/conf`):
+
+```bash
+docker compose down
+mkdir -p certbot/conf certbot/www
+
+docker run --rm \
+  -v velo-store_letsencrypt:/from \
+  -v "$(pwd)/certbot/conf":/to \
+  alpine sh -c "cp -a /from/. /to/"
+
+docker run --rm \
+  -v velo-store_certbot_www:/from \
+  -v "$(pwd)/certbot/www":/to \
+  alpine sh -c "cp -a /from/. /to/"
+
+docker compose up -d --build
+docker compose restart nginx
+```
+
+---
 ├─ products/                  # Catalog: categories, products, SKUs, variations
 ├─ cart/                      # ShoppingCart + ShoppingCartItem APIs (user + session)
 ├─ orders/                    # Checkout + order/line lifecycle + seller endpoints
