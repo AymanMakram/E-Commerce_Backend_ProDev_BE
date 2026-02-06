@@ -34,7 +34,8 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 # 3. Use os.getenv to retrieve the variables
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG') == 'True'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+_allowed_hosts_env = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost')
+ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
 
 # Application definition
 
@@ -231,12 +232,21 @@ _csrf_env = os.getenv('CSRF_TRUSTED_ORIGINS', '').strip()
 if _csrf_env:
     CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_env.split(',') if o.strip()]
 else:
-    CSRF_TRUSTED_ORIGINS = [
+    # Build a safe default set from ALLOWED_HOSTS.
+    # Django requires scheme in CSRF_TRUSTED_ORIGINS (http:// or https://).
+    _origins: list[str] = [
         'http://127.0.0.1:8000',
         'http://localhost:8000',
     ]
+    for host in ALLOWED_HOSTS:
+        if host in {'*', 'localhost', '127.0.0.1'}:
+            continue
+        _origins.append(f"https://{host}")
+        _origins.append(f"http://{host}")
+    # De-duplicate while preserving order
+    CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(_origins))
 
-# When running behind a reverse proxy (e.g. Nginx in Docker/EC2)
+# When running behind a reverse proxy (e.g. Nginx terminating TLS)
 if os.getenv('SECURE_PROXY_SSL_HEADER', 'False') == 'True':
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     USE_X_FORWARDED_HOST = True

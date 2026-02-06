@@ -34,6 +34,8 @@ services:
       - .env
     environment:
       - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
+      # Required when running behind Nginx terminating TLS (prevents redirect loops)
+      - SECURE_PROXY_SSL_HEADER=${SECURE_PROXY_SSL_HEADER:-True}
     depends_on:
       db:
         condition: service_healthy
@@ -86,27 +88,29 @@ services:
       - static_volume:/app/staticfiles:ro
       - media_volume:/app/media:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - letsencrypt:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
+      # Host-mounted Let's Encrypt volumes (shared with certbot)
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
     networks:
       - velo
 
-  # Optional helper to obtain/renew Let's Encrypt certificates.
-  # Run manually when needed:
-  #   docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d your.domain.com --email you@domain.com --agree-tos --no-eff-email
   certbot:
     image: certbot/certbot:latest
-    profiles: ["certbot"]
     volumes:
-      - letsencrypt:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: >
+      /bin/sh -c "trap exit TERM; while :; do
+        certbot renew --webroot -w /var/www/certbot --quiet;
+        sleep 12h;
+      done"
+    networks:
+      - velo
 
 volumes:
   postgres_data:
   static_volume:
   media_volume:
-  letsencrypt:
-  certbot_www:
 
 networks:
   velo:
