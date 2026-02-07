@@ -17,12 +17,13 @@ class OrderLineSerializer(serializers.ModelSerializer):
     line_status_id = serializers.ReadOnlyField(source='line_status.id')
 
     seller_name = serializers.SerializerMethodField()
+    seller_username = serializers.SerializerMethodField()
 
     line_can_update_status = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderLine
-        fields = ['id', 'product_name', 'sku', 'qty', 'price', 'seller_name', 'line_status_id', 'line_status_display', 'line_shipped_at', 'line_delivered_at', 'line_can_update_status']
+        fields = ['id', 'product_name', 'sku', 'qty', 'price', 'seller_name', 'seller_username', 'line_status_id', 'line_status_display', 'line_shipped_at', 'line_delivered_at', 'line_can_update_status']
 
     def get_line_can_update_status(self, obj):
         request = self.context.get('request') if hasattr(self, 'context') else None
@@ -44,6 +45,13 @@ class OrderLineSerializer(serializers.ModelSerializer):
             profile = getattr(seller, 'seller_profile', None)
             store_name = getattr(profile, 'store_name', None)
             return store_name or getattr(seller, 'username', None) or None
+        except Exception:
+            return None
+
+    def get_seller_username(self, obj):
+        try:
+            seller = getattr(getattr(getattr(obj, 'product_item', None), 'product', None), 'seller', None)
+            return getattr(seller, 'username', None) or None
         except Exception:
             return None
 

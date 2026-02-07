@@ -153,7 +153,7 @@
                   (l) => `
                 <tr>
                   <td>${esc(l.product_name || '')}</td>
-                  <td>${esc(l.seller_name || '—')}</td>
+                  <td>${esc(l.seller_name || '—')}${l.seller_username ? ` (${esc(l.seller_username)})` : ''}</td>
                   <td><span class="badge bg-secondary">${esc(l.sku || '')}</span></td>
                   <td class="fw-bold">x${Number(l.qty ?? 0)}</td>
                   <td>${money(l.price)} ج.م</td>
