@@ -73,16 +73,18 @@ class ProductItemSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
-    product_image = serializers.SerializerMethodField()
+    product_image = serializers.ImageField(required=False, allow_null=True)
     options = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductItem
         fields = ['id', 'product', 'sku', 'qty_in_stock', 'price', 'product_image', 'options']
 
-    def get_product_image(self, obj):
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
         request = self.context.get('request') if hasattr(self, 'context') else None
-        return _image_value_to_url(obj.product_image, request=request)
+        data['product_image'] = _image_value_to_url(getattr(instance, 'product_image', None), request=request)
+        return data
 
     def get_options(self, obj):
         # Prefer prefetched reverse relation to avoid N+1 queries.
@@ -100,7 +102,7 @@ class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.ReadOnlyField(source='category.category_name')
     # إضافة اسم البائع للقراءة فقط لتحسين عرض البيانات
     seller_name = serializers.ReadOnlyField(source='seller.username')
-    product_image = serializers.SerializerMethodField()
+    product_image = serializers.ImageField(required=False, allow_null=True)
     items = ProductItemSerializer(many=True, read_only=True)
 
     class Meta:
@@ -116,6 +118,8 @@ class ProductSerializer(serializers.ModelSerializer):
         # لكي يعتمد الـ API على المستخدم المسجل حالياً ولا يطلبه من المستخدم
         read_only_fields = ['seller']
 
-    def get_product_image(self, obj):
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
         request = self.context.get('request') if hasattr(self, 'context') else None
-        return _image_value_to_url(obj.product_image, request=request)
+        data['product_image'] = _image_value_to_url(getattr(instance, 'product_image', None), request=request)
+        return data
