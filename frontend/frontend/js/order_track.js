@@ -140,9 +140,11 @@
             <thead>
               <tr class="text-muted small">
                 <th>المنتج</th>
+                <th>البائع</th>
                 <th>SKU</th>
                 <th>الكمية</th>
                 <th>السعر</th>
+                <th>حالة البائع</th>
               </tr>
             </thead>
             <tbody>
@@ -151,9 +153,11 @@
                   (l) => `
                 <tr>
                   <td>${esc(l.product_name || '')}</td>
+                  <td>${esc(l.seller_name || '—')}</td>
                   <td><span class="badge bg-secondary">${esc(l.sku || '')}</span></td>
                   <td class="fw-bold">x${Number(l.qty ?? 0)}</td>
                   <td>${money(l.price)} ج.م</td>
+                  <td><span class="badge rounded-pill" style="background:rgba(148,163,184,.18); color:#334155; border:1px solid rgba(148,163,184,.35);">${esc(l.line_status_display || '—')}</span></td>
                 </tr>`
                 )
                 .join('')}

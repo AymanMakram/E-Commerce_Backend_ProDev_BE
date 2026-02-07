@@ -16,17 +16,30 @@ class OrderLineSerializer(serializers.ModelSerializer):
     line_status_display = serializers.ReadOnlyField(source='line_status.status')
     line_status_id = serializers.ReadOnlyField(source='line_status.id')
 
+    seller_name = serializers.SerializerMethodField()
+
     line_can_update_status = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderLine
-        fields = ['id', 'product_name', 'sku', 'qty', 'price', 'line_status_id', 'line_status_display', 'line_shipped_at', 'line_delivered_at', 'line_can_update_status']
+        fields = ['id', 'product_name', 'sku', 'qty', 'price', 'seller_name', 'line_status_id', 'line_status_display', 'line_shipped_at', 'line_delivered_at', 'line_can_update_status']
 
     def get_line_can_update_status(self, obj):
         request = self.context.get('request') if hasattr(self, 'context') else None
         user = getattr(request, 'user', None)
         if not user or not getattr(user, 'is_authenticated', False):
             return False
+
+    def get_seller_name(self, obj):
+        try:
+            seller = getattr(getattr(getattr(obj, 'product_item', None), 'product', None), 'seller', None)
+            if not seller:
+                return None
+            profile = getattr(seller, 'seller_profile', None)
+            store_name = getattr(profile, 'store_name', None)
+            return store_name or getattr(seller, 'username', None) or None
+        except Exception:
+            return None
         if getattr(user, 'user_type', None) != 'seller':
             return False
         try:
