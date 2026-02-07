@@ -25,6 +25,7 @@ from drf_yasg import openapi
 from orders.views import OrderViewSet
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from django.views.generic import TemplateView, RedirectView
+from orders.views_status_api import order_status_list, order_detail_view
 from django.conf import settings
 from django.conf.urls.static import static
 from products.views_customer import product_detail_view, product_list_view
@@ -49,6 +50,7 @@ urlpatterns = [
     path('', RedirectView.as_view(url='/api/accounts/login-view/'), name='go-to-login'),
     # Default route: go to login view
     path('admin/', admin.site.urls),
+    path('api/orders/<int:order_id>/', order_detail_view, name='order_detail'),
     path('api/', include(router.urls)),
     path('api/accounts/', include('accounts.urls')),
     path('api/cart/', include('cart.urls')),
