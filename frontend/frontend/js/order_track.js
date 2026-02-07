@@ -180,6 +180,27 @@
       return;
     }
 
+    const canUpdate = !!order?.can_update_status;
+    if (!canUpdate) {
+      const otherCount = Number(order?.other_sellers_lines_count ?? 0) || 0;
+      const totalCount = Number(order?.total_lines_count ?? 0) || 0;
+      const ownCount = totalCount > 0 ? Math.max(0, totalCount - otherCount) : 0;
+
+      statusUpdateEl.innerHTML = `
+        <div class="card border-0 shadow-sm p-3" style="border-radius:16px;">
+          <div class="alert alert-info border-0 mb-0" style="border-radius:14px;">
+            هذا طلب متعدد البائعين، لذلك لا يمكنك تحديث الحالة العامة من هنا.
+            ${otherCount > 0 ? `يوجد ${otherCount} عناصر لبائعين آخرين.` : ''}
+            ${ownCount > 0 ? `عناصرك: ${ownCount}.` : ''}
+          </div>
+          <div class="small text-muted mt-2">
+            لتحديث حالة عناصر متجرك، استخدم صفحة <a href="/seller/orders/" class="text-info">طلبات المتجر</a>.
+          </div>
+        </div>
+      `;
+      return;
+    }
+
     const statuses = await loadStatuses();
     if (!statuses.length) {
       statusUpdateEl.innerHTML = '';
@@ -200,6 +221,9 @@
           <select id="order-status-select" class="form-select form-select-sm w-auto">${options}</select>
           <button type="submit" class="btn btn-info btn-sm text-white rounded-pill" id="status-update-btn">تحديث</button>
         </form>
+        <span class="badge rounded-pill mt-2" style="background:rgba(0,188,212,.12); color:#00BCD4; border:1px solid rgba(0,188,212,.35);">
+          متاح فقط لطلبات متجر واحد
+        </span>
       </div>
     `;
 
@@ -222,7 +246,21 @@
       if (!res) return;
       const data = await readJsonSafe(res);
       if (!res.ok) {
-        showToast((data && data.detail) || 'فشل تحديث حالة الطلب.', 'danger');
+        const message = (data && data.detail) || 'فشل تحديث حالة الطلب.';
+        showToast(message, 'danger');
+
+        if (res.status === 403) {
+          statusUpdateEl.innerHTML = `
+            <div class="card border-0 shadow-sm p-3" style="border-radius:16px;">
+              <div class="alert alert-info border-0 mb-0" style="border-radius:14px;">
+                لا يمكنك تحديث الحالة العامة لهذا الطلب لأن به عناصر لبائعين آخرين.
+              </div>
+              <div class="small text-muted mt-2">
+                حدّث عناصر متجرك من صفحة <a href="/seller/orders/" class="text-info">طلبات المتجر</a>.
+              </div>
+            </div>
+          `;
+        }
         return;
       }
 
