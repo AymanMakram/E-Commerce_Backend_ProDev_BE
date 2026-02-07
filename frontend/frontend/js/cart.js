@@ -502,6 +502,15 @@
       window.fetchCartFromApi();
       bindCheckoutModal();
       bindCheckoutConfirm();
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('checkout') === '1' && checkoutBtn) {
+        checkoutBtn.click();
+        params.delete('checkout');
+        const next = params.toString();
+        const cleanUrl = next ? `${window.location.pathname}?${next}` : window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+      }
     }
   });
 })();

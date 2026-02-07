@@ -63,7 +63,7 @@ urlpatterns = [
     path('seller/profile/', seller_profile_view, name='seller_profile'),
     path('cart/', TemplateView.as_view(template_name='cart/cart_detail.html'), name='cart_detail_page'),
     # Retired legacy checkout page; use modern cart modal checkout flow.
-    path('cart/checkout/', RedirectView.as_view(url='/cart/', permanent=False), name='cart_checkout'),
+    path('cart/checkout/', RedirectView.as_view(url='/cart/?checkout=1', permanent=False), name='cart_checkout'),
     # Swagger Documentation
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0)),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
