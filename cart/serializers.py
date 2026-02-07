@@ -42,6 +42,9 @@ class ShoppingCartItemSerializer(serializers.ModelSerializer):
     
     # 4. الكمية: التحويل من 'qty' في الموديل إلى 'quantity' لطلب الـ Frontend
     quantity = serializers.IntegerField(source='qty', min_value=1)
+
+    # 5. المخزون: expose SKU stock for UI limits
+    stock = serializers.IntegerField(source='product_item.qty_in_stock', read_only=True)
     
     subtotal = serializers.SerializerMethodField()
 
@@ -53,6 +56,7 @@ class ShoppingCartItemSerializer(serializers.ModelSerializer):
             'product_name', 
             'image',    # مسمى موحد للصور
             'price',    # مسمى موحد للأسعار
+            'stock',    # available stock for UI limits
             'quantity', # المسمى المطلوب في JavaScript
             'qty',      # المسمى الأصلي في قاعدة البيانات
             'subtotal'

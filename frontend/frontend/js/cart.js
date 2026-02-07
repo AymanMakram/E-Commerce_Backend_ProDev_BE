@@ -52,6 +52,44 @@
     if (cartTotal) cartTotal.textContent = formatCurrencyEGP(totalPrice);
   }
 
+  function ensureStockAlertEl() {
+    if (!cartItemsContainer || !cartItemsContainer.parentElement) return null;
+    let alertEl = document.getElementById('cart-stock-alert');
+    if (alertEl) return alertEl;
+
+    alertEl = document.createElement('div');
+    alertEl.id = 'cart-stock-alert';
+    alertEl.className = 'alert alert-warning d-none mt-2 mb-2';
+    alertEl.style.borderRadius = '12px';
+    cartItemsContainer.parentElement.insertBefore(alertEl, cartItemsContainer);
+    return alertEl;
+  }
+
+  function applyStockGuard(items) {
+    const list = Array.isArray(items) ? items : [];
+    const invalid = list.filter((item) => {
+      const qty = Number(item.qty || item.quantity || 0);
+      const stock = Number(item.stock ?? item?.product_item?.qty_in_stock);
+      if (!Number.isFinite(stock)) return false;
+      return qty > stock;
+    });
+
+    const canCheckout = invalid.length === 0;
+    if (checkoutBtn) checkoutBtn.disabled = !canCheckout;
+
+    const alertEl = ensureStockAlertEl();
+    if (!alertEl) return;
+
+    if (canCheckout) {
+      alertEl.classList.add('d-none');
+      alertEl.textContent = '';
+      return;
+    }
+
+    alertEl.classList.remove('d-none');
+    alertEl.textContent = 'بعض المنتجات تجاوزت المخزون المتاح. حدّث الكميات أو احذف العناصر غير المتوفرة لإتمام الطلب.';
+  }
+
   function updateCartStateFromItems(items) {
     const totalQty = (items || []).reduce((sum, item) => {
       const q = parseInt(item.qty || item.quantity || 0, 10);
@@ -81,11 +119,21 @@
       const name = item.product_name || item?.product_item?.product_name || 'منتج';
       const price = Number(item.price || item?.product_item?.price || 0);
       const qty = Number(item.qty || item.quantity || 1);
+      const stock = Number(item.stock ?? item?.product_item?.qty_in_stock ?? 0);
+      const hasStock = Number.isFinite(stock) && stock >= 0;
       const imagePath = normalizeImageUrl(item.image || item.product_image || item?.product_item?.product_image || '');
 
       const safeId = escapeHtml(String(item.id ?? ''));
       const safeName = escapeHtml(name);
       const safeImagePath = escapeHtml(imagePath);
+
+      const decDisabled = qty <= 1 ? 'disabled' : '';
+      const incDisabled = (hasStock && qty >= stock) ? 'disabled' : '';
+      const stockLabel = hasStock ? (stock > 0 ? `المتاح: ${stock}` : 'غير متوفر') : '';
+
+      const outOfStockBadge = hasStock && stock <= 0
+        ? '<span class="badge bg-danger ms-2">غير متوفر</span>'
+        : '';
 
       return `
         <div class="col-12">
@@ -95,12 +143,13 @@
                 ${imagePath ? `<img src="${safeImagePath}" alt="${safeName}" style="width:100%;height:100%;object-fit:cover;" />` : `<span class="text-muted small">IMG</span>`}
               </div>
               <div class="flex-grow-1">
-                <div class="fw-bold">${safeName}</div>
+                <div class="fw-bold d-flex align-items-center">${safeName}${outOfStockBadge}</div>
                 <div class="text-muted small">${formatCurrencyEGP(price)}</div>
+                ${stockLabel ? `<div class="small text-muted mt-1">${stockLabel}</div>` : ''}
                 <div class="d-flex align-items-center mt-2">
-                  <button class="btn btn-sm btn-outline-info rounded-pill" data-action="qty-dec" data-item-id="${safeId}" data-new-qty="${Math.max(1, qty - 1)}">-</button>
+                  <button class="btn btn-sm btn-outline-info rounded-pill" data-action="qty-dec" data-item-id="${safeId}" data-current-qty="${qty}" data-max-qty="${hasStock ? stock : ''}" ${decDisabled}>-</button>
                   <span class="mx-3 fw-bold">${qty}</span>
-                  <button class="btn btn-sm btn-outline-info rounded-pill" data-action="qty-inc" data-item-id="${safeId}" data-new-qty="${qty + 1}">+</button>
+                  <button class="btn btn-sm btn-outline-info rounded-pill" data-action="qty-inc" data-item-id="${safeId}" data-current-qty="${qty}" data-max-qty="${hasStock ? stock : ''}" ${incDisabled}>+</button>
                   <button class="btn btn-sm btn-link text-danger ms-auto text-decoration-none" data-action="delete-item" data-item-id="${safeId}">
                     <i class="fa-solid fa-trash-can me-1"></i> حذف
                   </button>
@@ -135,11 +184,20 @@
       }
 
       if (action === 'qty-dec' || action === 'qty-inc') {
-        const newQtyRaw = btn.getAttribute('data-new-qty');
-        const newQty = parseInt(newQtyRaw || '', 10);
-        if (Number.isFinite(newQty) && newQty > 0) {
-          window.updateQuantity(itemId, newQty);
+        const currentQty = parseInt(btn.getAttribute('data-current-qty') || '', 10);
+        const maxQty = parseInt(btn.getAttribute('data-max-qty') || '', 10);
+
+        if (!Number.isFinite(currentQty) || currentQty < 1) return;
+
+        let nextQty = currentQty + (action === 'qty-inc' ? 1 : -1);
+        if (nextQty < 1) return;
+
+        if (Number.isFinite(maxQty) && maxQty >= 0 && nextQty > maxQty) {
+          showToast(`الحد الأقصى المتاح ${maxQty}.`, 'warning');
+          return;
         }
+
+        window.updateQuantity(itemId, nextQty);
       }
     });
   }
@@ -181,6 +239,7 @@
       if (!silent) renderCartItems(items);
       updateTotals(data.total_price || 0);
       updateCartStateFromItems(items);
+      applyStockGuard(items);
     } catch (e) {
       console.error('Cart fetch failed', e);
       if (!silent) showToast('تعذر تحميل السلة.', 'danger');
@@ -201,7 +260,9 @@
       if (res.ok) {
         window.fetchCartFromApi();
       } else {
-        showToast('فشل تحديث الكمية.', 'danger');
+        const err = await res.json().catch(() => ({}));
+        const msg = err?.quantity || err?.detail || 'فشل تحديث الكمية.';
+        showToast(msg, 'danger');
       }
     } catch (e) {
       console.error('Quantity update failed', e);
