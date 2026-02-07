@@ -29,6 +29,12 @@ class OrderLineSerializer(serializers.ModelSerializer):
         user = getattr(request, 'user', None)
         if not user or not getattr(user, 'is_authenticated', False):
             return False
+        if getattr(user, 'user_type', None) != 'seller':
+            return False
+        try:
+            return getattr(getattr(obj.product_item, 'product', None), 'seller_id', None) == user.id
+        except Exception:
+            return False
 
     def get_seller_name(self, obj):
         try:
@@ -40,12 +46,6 @@ class OrderLineSerializer(serializers.ModelSerializer):
             return store_name or getattr(seller, 'username', None) or None
         except Exception:
             return None
-        if getattr(user, 'user_type', None) != 'seller':
-            return False
-        try:
-            return getattr(getattr(obj.product_item, 'product', None), 'seller_id', None) == user.id
-        except Exception:
-            return False
 
 
 class ShopOrderSerializer(serializers.ModelSerializer):
