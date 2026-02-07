@@ -435,10 +435,15 @@
     const res = await window.request(`/api/orders/${orderId}/set-status/`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
+      redirectOnAuthError: false,
     });
     if (!res) return null;
     const data = await readJsonSafe(res);
     if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        showToast('غير مصرح بتحديث حالة الطلب. يرجى تسجيل الدخول مجددا.', 'warning');
+        return null;
+      }
       const msg = (data && (data.detail || data.error)) || 'فشل تحديث الحالة.';
       showToast(msg, 'danger');
       return null;
@@ -451,10 +456,15 @@
     const res = await window.request(`/api/orders/${orderId}/set-line-status/`, {
       method: 'PATCH',
       body: JSON.stringify({ line_id: lineId, line_status: statusId }),
+      redirectOnAuthError: false,
     });
     if (!res) return null;
     const data = await readJsonSafe(res);
     if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        showToast('غير مصرح بتحديث حالة القطعة. يرجى تسجيل الدخول مجددا.', 'warning');
+        return null;
+      }
       const msg = (data && (data.detail || data.error)) || 'فشل تحديث حالة القطعة.';
       showToast(msg, 'danger');
       return null;
