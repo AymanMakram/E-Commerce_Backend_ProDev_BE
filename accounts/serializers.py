@@ -86,22 +86,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     #    if not phone or not re.match(pattern, phone):
     #        raise serializers.ValidationError({field_name: "يرجى إدخال رقم هاتف مصري صحيح (11 رقم)."})
     def _validate_global_phone(self, phone, field_name):
+        # لا يوجد فحص، لا يوجد تنظيف، لا يوجد أخطاء
+        # فقط نمرر القيمة كما هي لضمان عدم حدوث Error 500
         if not phone:
-            raise serializers.ValidationError({field_name: "رقم الهاتف مطلوب."})
-    
-        # 1. تنظيف الرقم (إبقاء الأرقام وعلامة + فقط)
-        clean_phone = re.sub(r'[^\d+]', '', str(phone).strip())
-    
-        # 2. التأكد من أن الطول معقول (مثلاً لا يقل عن 7 أرقام ولا يزيد عن 15)
-        # هذا يمنع أرقام مثل "123" ولكنه يسمح بأي رقم دولي حقيقي
-        digits_only = re.sub(r'\D', '', clean_phone)
-        if len(digits_only) < 7 or len(digits_only) > 15:
-            raise serializers.ValidationError({
-                field_name: "رقم الهاتف غير منطقي. يرجى التأكد من كتابة كود الدولة والرقم صحيحاً."
-            })
-    
-        # 3. قبول الرقم فوراً بدون تشديد من مكتبة phonenumbers
-        return clean_phone
+            return ""
+        return str(phone).strip()
 
     def validate(self, attrs):
         user_type = attrs.get('user_type')
