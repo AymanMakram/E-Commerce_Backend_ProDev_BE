@@ -208,7 +208,7 @@
 
       if (userType === 'customer') {
         if (!phone) clientErrors.push('رقم الهاتف الجوال إلزامي للمتسوق.');
-        else if (!phoneRegex.test(phone)) clientErrors.push('رقم الهاتف المصري غير صحيح.');
+        else if (!phoneRegex.test(phone)) clientErrors.push('رقم الهاتف غير صحيح.');
       } else if (userType === 'seller') {
         if (!storeName) clientErrors.push('اسم علامتك التجارية حقل إلزامي للتاجر.');
         if (!sellerPhone) clientErrors.push('رقم هاتف المتجر حقل إلزامي للتاجر.');
