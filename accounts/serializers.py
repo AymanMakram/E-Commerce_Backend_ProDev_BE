@@ -89,35 +89,19 @@ class RegisterSerializer(serializers.ModelSerializer):
         if not phone:
             raise serializers.ValidationError({field_name: "رقم الهاتف مطلوب."})
     
-        # 1. تنظيف الرقم: إزالة أي شيء ليس رقماً (مع الإبقاء على + في البداية فقط)
-        # هذا يحول "+20 10-123" إلى "+2010123"
-        phone_input = str(phone).strip()
-        clean_phone = re.sub(r'(?<!^)\+|[^\d+]', '', phone_input)
+        # 1. تنظيف الرقم (إبقاء الأرقام وعلامة + فقط)
+        clean_phone = re.sub(r'[^\d+]', '', str(phone).strip())
     
-        # 2. معالجة البداية: تحويل 00 إلى +
-        if clean_phone.startswith('00'):
-            clean_phone = '+' + clean_phone[2:]
-        
-        # 3. محاولة التحليل (Parsing)
-        try:
-            # إذا لم يبدأ بـ +، سنحاول معالجته كأنه رقم دولي بدون علامة
-            if not clean_phone.startswith('+'):
-                # سنفترض أن أول أرقام هي كود الدولة (مثلاً 2010...)
-                # سنضيف + ونحاول
-                parsed_phone = phonenumbers.parse('+' + clean_phone, None)
-            else:
-                parsed_phone = phonenumbers.parse(clean_phone, None)
-    
-            # 4. التحقق الفعلي
-            if not phonenumbers.is_valid_number(parsed_phone):
-                # إذا فشل التحقق، سنعطي المستخدم مثالاً للتوضيح
-                raise ValueError
-    
-        except (phonenumbers.NumberParseException, ValueError):
-            # هنا سنظهر للمستخدم الرقم الذي استلمه السيرفر لنعرف سبب المشكلة
+        # 2. التأكد من أن الطول معقول (مثلاً لا يقل عن 7 أرقام ولا يزيد عن 15)
+        # هذا يمنع أرقام مثل "123" ولكنه يسمح بأي رقم دولي حقيقي
+        digits_only = re.sub(r'\D', '', clean_phone)
+        if len(digits_only) < 7 or len(digits_only) > 15:
             raise serializers.ValidationError({
-                field_name: f"رقم الهاتف {phone_input} غير صحيح. يرجى إدخال كود الدولة (مثلاً +20 لمصر أو +233 لغانا)."
+                field_name: "رقم الهاتف غير منطقي. يرجى التأكد من كتابة كود الدولة والرقم صحيحاً."
             })
+    
+        # 3. قبول الرقم فوراً بدون تشديد من مكتبة phonenumbers
+        return clean_phone
 
     def validate(self, attrs):
         user_type = attrs.get('user_type')
