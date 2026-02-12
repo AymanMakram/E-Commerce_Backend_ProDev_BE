@@ -204,7 +204,7 @@
         clientErrors.push('صيغة البريد الإلكتروني غير صحيحة.');
       }
 
-      const phoneRegex = /^01[0125][0-9]{8}$/;
+      const phoneRegex = /^\+?[1-9]\d{6,14}$/;
 
       if (userType === 'customer') {
         if (!phone) clientErrors.push('رقم الهاتف الجوال إلزامي للمتسوق.');
