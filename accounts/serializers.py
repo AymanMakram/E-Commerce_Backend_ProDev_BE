@@ -81,10 +81,23 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("يرجى إدخال بريد إلكتروني صحيح.")
         return value.lower().strip()
 
-    def _validate_egyptian_phone(self, phone, field_name):
-        pattern = r'^01[0125][0-9]{8}$'
-        if not phone or not re.match(pattern, phone):
-            raise serializers.ValidationError({field_name: "يرجى إدخال رقم هاتف مصري صحيح (11 رقم)."})
+    #def _validate_egyptian_phone(self, phone, field_name):
+    #    pattern = r'^01[0125][0-9]{8}$'
+    #    if not phone or not re.match(pattern, phone):
+    #        raise serializers.ValidationError({field_name: "يرجى إدخال رقم هاتف مصري صحيح (11 رقم)."})
+
+    def _validate_global_phone(self, phone, field_name):
+        try:
+            # We pass None as the second argument because we expect a +country_code
+            parsed_phone = phonenumbers.parse(phone, None)
+        
+            if not phonenumbers.is_valid_number(parsed_phone):
+                raise ValueError
+            
+        except (phonenumbers.NumberParseException, ValueError):
+            raise serializers.ValidationError({
+                field_name: "Invalid phone number. Include country code (e.g., +20... or +1...)."
+            })
 
     def validate(self, attrs):
         user_type = attrs.get('user_type')
