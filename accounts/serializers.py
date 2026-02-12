@@ -87,33 +87,36 @@ class RegisterSerializer(serializers.ModelSerializer):
     #        raise serializers.ValidationError({field_name: "يرجى إدخال رقم هاتف مصري صحيح (11 رقم)."})
     def _validate_global_phone(self, phone, field_name):
         if not phone:
-            return # أو ارفع خطأ لو الحقل إلزامي
+            raise serializers.ValidationError({field_name: "رقم الهاتف مطلوب."})
     
-        # 1. تنظيف الرقم من أي رموز غير الأرقام ما عدا (+)
-        # هذا يزيل المسافات، الأقواس، والشرطات التي قد تأتي من الفرونت إند
-        clean_phone = re.sub(r'[^\d+]', '', phone.strip())
+        # 1. تنظيف الرقم: إزالة أي شيء ليس رقماً (مع الإبقاء على + في البداية فقط)
+        # هذا يحول "+20 10-123" إلى "+2010123"
+        phone_input = str(phone).strip()
+        clean_phone = re.sub(r'(?<!^)\+|[^\d+]', '', phone_input)
     
-        # 2. معالجة البداية (Standardization)
+        # 2. معالجة البداية: تحويل 00 إلى +
         if clean_phone.startswith('00'):
             clean_phone = '+' + clean_phone[2:]
-        elif not clean_phone.startswith('+'):
-            # إذا أدخل المستخدم 2010... بدلاً من +2010...
-            clean_phone = '+' + clean_phone
-    
+        
+        # 3. محاولة التحليل (Parsing)
         try:
-            # 3. محاولة التحليل باستخدام مكتبة جوجل
-            parsed_phone = phonenumbers.parse(clean_phone, None)
-            
-            # 4. التحقق من صحة الرقم دولياً
+            # إذا لم يبدأ بـ +، سنحاول معالجته كأنه رقم دولي بدون علامة
+            if not clean_phone.startswith('+'):
+                # سنفترض أن أول أرقام هي كود الدولة (مثلاً 2010...)
+                # سنضيف + ونحاول
+                parsed_phone = phonenumbers.parse('+' + clean_phone, None)
+            else:
+                parsed_phone = phonenumbers.parse(clean_phone, None)
+    
+            # 4. التحقق الفعلي
             if not phonenumbers.is_valid_number(parsed_phone):
+                # إذا فشل التحقق، سنعطي المستخدم مثالاً للتوضيح
                 raise ValueError
-                
-            # اختيار إضافي: يمكنك هنا إعادة الرقم بصيغة موحدة (E.164)
-            # return phonenumbers.format_number(parsed_phone, phonenumbers.PhoneNumberFormat.E164)
     
         except (phonenumbers.NumberParseException, ValueError):
+            # هنا سنظهر للمستخدم الرقم الذي استلمه السيرفر لنعرف سبب المشكلة
             raise serializers.ValidationError({
-                field_name: "رقم هاتف غير صحيح. تأكد من كتابة رمز الدولة (مثلاً: +20 لمصر أو +233 لغانا)."
+                field_name: f"رقم الهاتف {phone_input} غير صحيح. يرجى إدخال كود الدولة (مثلاً +20 لمصر أو +233 لغانا)."
             })
 
     def validate(self, attrs):
