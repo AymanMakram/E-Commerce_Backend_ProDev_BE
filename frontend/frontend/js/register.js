@@ -204,7 +204,7 @@
         clientErrors.push('صيغة البريد الإلكتروني غير صحيحة.');
       }
 
-      const phoneRegex = /^\+?[1-9]\d{6,14}$/;
+      const phoneRegex = /.*/; // يقبل أي نص
 
       if (userType === 'customer') {
         if (!phone) clientErrors.push('رقم الهاتف الجوال إلزامي للمتسوق.');
