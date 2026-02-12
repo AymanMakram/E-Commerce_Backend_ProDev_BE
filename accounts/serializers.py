@@ -81,17 +81,11 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("يرجى إدخال بريد إلكتروني صحيح.")
         return value.lower().strip()
 
-    #def _validate_egyptian_phone(self, phone, field_name):
-    #    pattern = r'^01[0125][0-9]{8}$'
-    #    if not phone or not re.match(pattern, phone):
-    #        raise serializers.ValidationError({field_name: "يرجى إدخال رقم هاتف مصري صحيح (11 رقم)."})
-    def _validate_global_phone(self, phone, field_name):
-        # لا يوجد فحص، لا يوجد تنظيف، لا يوجد أخطاء
-        # فقط نمرر القيمة كما هي لضمان عدم حدوث Error 500
-        if not phone:
-            return ""
-        return str(phone).strip()
-
+    def _validate_egyptian_phone(self, phone, field_name):
+        pattern = r'^0[0123456789][0-9]{15}$'
+        if not phone or not re.match(pattern, phone):
+            raise serializers.ValidationError({field_name: "يرجى إدخال رقم هاتف مصري صحيح (11 رقم)."})
+            
     def validate(self, attrs):
         user_type = attrs.get('user_type')
         
