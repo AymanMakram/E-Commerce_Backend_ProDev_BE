@@ -85,18 +85,35 @@ class RegisterSerializer(serializers.ModelSerializer):
     #    pattern = r'^01[0125][0-9]{8}$'
     #    if not phone or not re.match(pattern, phone):
     #        raise serializers.ValidationError({field_name: "يرجى إدخال رقم هاتف مصري صحيح (11 رقم)."})
-
     def _validate_global_phone(self, phone, field_name):
+        if not phone:
+            return # أو ارفع خطأ لو الحقل إلزامي
+    
+        # 1. تنظيف الرقم من أي رموز غير الأرقام ما عدا (+)
+        # هذا يزيل المسافات، الأقواس، والشرطات التي قد تأتي من الفرونت إند
+        clean_phone = re.sub(r'[^\d+]', '', phone.strip())
+    
+        # 2. معالجة البداية (Standardization)
+        if clean_phone.startswith('00'):
+            clean_phone = '+' + clean_phone[2:]
+        elif not clean_phone.startswith('+'):
+            # إذا أدخل المستخدم 2010... بدلاً من +2010...
+            clean_phone = '+' + clean_phone
+    
         try:
-            # We pass None as the second argument because we expect a +country_code
-            parsed_phone = phonenumbers.parse(phone, None)
-        
+            # 3. محاولة التحليل باستخدام مكتبة جوجل
+            parsed_phone = phonenumbers.parse(clean_phone, None)
+            
+            # 4. التحقق من صحة الرقم دولياً
             if not phonenumbers.is_valid_number(parsed_phone):
                 raise ValueError
-            
+                
+            # اختيار إضافي: يمكنك هنا إعادة الرقم بصيغة موحدة (E.164)
+            # return phonenumbers.format_number(parsed_phone, phonenumbers.PhoneNumberFormat.E164)
+    
         except (phonenumbers.NumberParseException, ValueError):
             raise serializers.ValidationError({
-                field_name: "Invalid phone number. Include country code (e.g., +20... or +1...)."
+                field_name: "رقم هاتف غير صحيح. تأكد من كتابة رمز الدولة (مثلاً: +20 لمصر أو +233 لغانا)."
             })
 
     def validate(self, attrs):
