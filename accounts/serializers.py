@@ -7,7 +7,6 @@ Includes:
 """
 
 import re
-import phonenumbers
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -81,11 +80,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("يرجى إدخال بريد إلكتروني صحيح.")
         return value.lower().strip()
 
-    def _validate_egyptian_phone(self, phone, field_name):
-        pattern = r'^0[0123456789][0-9]{15}$'
-        if not phone or not re.match(pattern, phone):
-            raise serializers.ValidationError({field_name: "يرجى إدخال رقم هاتف مصري صحيح (11 رقم)."})
-            
     def validate(self, attrs):
         user_type = attrs.get('user_type')
         
@@ -96,9 +90,9 @@ class RegisterSerializer(serializers.ModelSerializer):
             
             # 2. التحقق من هاتف البائع (إجباري)
             s_phone = attrs.get('seller_phone')
-            if not s_phone:
+            if not s_phone or not str(s_phone).strip():
                 raise serializers.ValidationError({"seller_phone": "رقم هاتف التواصل التجاري مطلوب."})
-            self._validate_egyptian_phone(s_phone, "seller_phone")
+            attrs['seller_phone'] = str(s_phone).strip()
 
             # 3. التحقق من الرقم الضريبي (إجباري و 9 أرقام)
             tax = attrs.get('tax_number')
@@ -113,9 +107,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         elif user_type == 'customer':
             # 1. التحقق من هاتف العميل (إجباري)
             c_phone = attrs.get('phone_number')
-            if not c_phone:
+            if not c_phone or not str(c_phone).strip():
                 raise serializers.ValidationError({"phone_number": "رقم الهاتف الجوال مطلوب للمتسوق."})
-            self._validate_egyptian_phone(c_phone, "phone_number")
+            attrs['phone_number'] = str(c_phone).strip()
 
             # تنظيف حقول التاجر في حالة العميل
             attrs['store_name'] = None
